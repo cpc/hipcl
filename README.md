@@ -6,7 +6,7 @@
 
 ### What is HIPCL ###
 
-HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL and SPIR-V, thus providing a portability path from CUDA to OpenCL.
+HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL and SPIR-V, thus providing a portability path from CUDA to OpenCL. HIPCL development is led by [Customized Parallel Computing](http://tuni.fi/cpc) group of [Tampere University](http://tuni.fi/en), Finland.
 
 ## Building HIPCL ##
 --------------------
