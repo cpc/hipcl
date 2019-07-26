@@ -1,12 +1,12 @@
 # HIPCL library #
 --------------------
 
-### what is HIP ###
-Heterogeneous-compute Interface for Portability, or HIP, is a C++ runtime API and kernel language that allows developers to write code that runs on both AMD and NVidia GPUs.
-CUDA applications can be converted to HIP much easier than to OpenCL, since the conversion process is largely automated.
+### What is HIP? ###
+[Heterogeneous-compute Interface for Portability](https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_faq.md), or HIP, is a C++ runtime API and kernel language that allows developers to write code that runs on both AMD and NVidia GPUs. CUDA applications can be converted to HIP in a largely automated fashion.
 
 ### What is HIPCL ###
-HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL.
+
+HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL and SPIR-V, thus providing a portability path from CUDA to OpenCL.
 
 ## Building HIPCL ##
 --------------------
@@ -16,14 +16,14 @@ There are a few extra install/usage options documented in 'doc' directory.
 HIPCL has some prerequisites to build:
  * LLVM + patched Clang
  * LLVM-SPIRV translator tool from Khronos
- * an OpenCL implementation with (at least partial) 2.x support;
+ * An OpenCL implementation with (at least partial) 2.x support;
    HIPCL requires Shared Virtual Memory and clCreateProgramWithIL() support
 
 ### Clang + LLVM ###
 
-You'll need to build a patched Clang that compiles HIP source code to an ELF+SPIR-V binary.
+You'll need to build a patched Clang that can compile HIP source code to ELF+SPIR-V fat binaries.
 
-download LLVM + Clang:
+Download LLVM + Clang:
 
     git clone https://github.com/llvm-mirror/llvm.git
     cd llvm
@@ -33,13 +33,13 @@ download LLVM + Clang:
     cd clang
     git checkout -b release_80 origin/release_80
 
-build+install LLVM/Clang:
+Build+install LLVM/Clang:
 
     cmake -DCMAKE_INSTALL_PREFIX=<llvm_destination_dir> [other cmake flags] llvm-git-directory
 
-### LLVM-SPIRV translator ###
+### LLVM-SPIRV Translator ###
 
-download, build+install LLVM-SPIRV translator:
+download, build+install the LLVM-SPIRV translator:
 
     git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git
     cd SPIRV-LLVM-Translator
@@ -49,11 +49,11 @@ download, build+install LLVM-SPIRV translator:
     make -j4 llvm-spirv
     cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin
 
-### OpenCL 2.x implementation ###
+### Known Supported OpenCL Implementations ###
 
 At least Intel's "NEO" OpenCL implementation supports 2.x and SPIR-V on Intel GPUs.
 
-It's also possible to use a sufficiently recent (2019/07+) Pocl, but it must be built with LLVM_SPIRV support:
+It's also possible to use a sufficiently recent (2019/07+) [POCL](http://code.portablecl.org), but it must be built with LLVM-SPIRV support:
 
     git clone https://github.com/pocl/pocl
     cd pocl
@@ -64,7 +64,7 @@ It's also possible to use a sufficiently recent (2019/07+) Pocl, but it must be 
           [other cmake flags] ..
     make install
 
-### Build HIPCL library ###
+### Build HIPCL Library ###
 
 build+install the HIPCL library:
 
@@ -89,7 +89,7 @@ Usage:
 
     hipify-clang [hipify args] -- [clang cuda args]
 
-e.g.
+E.g.
 
     ./hipify-clang -inplace -print-stats example.cu -- -x cuda --cuda-path=/usr/local/cuda-8.0 -I /usr/local/cuda-8.0/samples/common/inc
 
@@ -105,13 +105,12 @@ Link:
 
     <llvm_destination_dir>/bin/clang++ -o example example.o -L<hipcl_install_dir>/lib -lhipcl -pthread -lOpenCL
 
-
-## Known issues ##
+## Known Issues ##
 --------------------
 
-Some of these are simply not yet implemented, others are missing because they would require an OpenCL extension.
+Some of these are simply not yet implemented, some are missing because they would require an OpenCL extension.
 
-### Device side / math library ###
+### Device Side / Math Library ###
 
 OpenCL Extension required:
 
@@ -121,7 +120,7 @@ OpenCL Extension required:
 
 Not yet implemented features:
 
- * statically sized shared memory works, but dynamic shared memory is not yet implemented
+ * Statically sized shared memory works, but dynamic shared memory is not yet implemented
 
 ### Host runtime API ###
 
@@ -142,7 +141,7 @@ Not implemented and/or require extension to OpenCL:
 * hipError_t hipModuleLoadData(hipModule_t* module, const void* image);
 * hipError_t hipModuleLoadDataEx(hipModule_t *module, const void *image,...);
 
-  this API is not possible to implement with SPIR-V binaries,
+  This API is not possible to implement with SPIR-V binaries,
   because there is no size parameter (only a void* pointer),
   and SPIR-V binaries don't have their size embedded.
   It might be possible to implement with disassembled
@@ -175,7 +174,7 @@ Not implemented and/or require extension to OpenCL:
 * hipError_t hipDeviceGetByPCIBusId(int* device, const char* pciBusId);
 * hipError_t hipSetDeviceFlags(unsigned flags);
 
-######  Symbol API not implemented  ######
+######  Symbol API Not Implemented  ######
 
 * hipError_t hipMemcpyToSymbolAsync(void*, const void*, size_t, size_t,
                                   hipMemcpyKind, hipStream_t, const char*);
@@ -191,7 +190,7 @@ Not implemented and/or require extension to OpenCL:
                              size_t sizeBytes, size_t offset __dparm(0),
                              hipMemcpyKind kind __dparm(hipMemcpyHostToDevice));
 
-######  Peer2Peer functions are not implemented yet ######
+######  Peer2Peer Functions Are Not Implemented Yet ######
 
 * hipError_t hipDeviceCanAccessPeer(int* canAccessPeer, int deviceId, int peerDeviceId);
 * hipError_t hipDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags);
@@ -199,12 +198,12 @@ Not implemented and/or require extension to OpenCL:
 * hipError_t hipMemcpyPeer(void* dst, int dstDeviceId, const void* src, int srcDeviceId, size_t sizeBytes);
 * hipError_t hipMemcpyPeerAsync(void* dst, int dstDeviceId, const void* src, int srcDevice, size_t sizeBytes, hipStream_t stream __dparm(0));
 
-######  PROFILER not implemented  ######
+######  PROFILER Not implemented  ######
 
 * hipError_t hipProfilerStart();
 * hipError_t hipProfilerStop();
 
-######  API CALLBACKs not implemented  ######
+######  API CALLBACKs Not implemented  ######
 
 * hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg);
 * hipError_t hipRemoveApiCallback(uint32_t id);
