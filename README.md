@@ -29,13 +29,15 @@ Download LLVM + Clang:
     cd llvm
     git checkout -b release_80 origin/release_80
     cd tools
-    git clone https://github.com/cpc/hipcl-clang.git
+    git clone https://github.com/cpc/hipcl-clang.git clang
     cd clang
     git checkout -b release_80 origin/release_80
 
 Build+install LLVM/Clang:
 
     cmake -DCMAKE_INSTALL_PREFIX=<llvm_destination_dir> [other cmake flags] llvm-git-directory
+    make -jX
+    make install
 
 ### LLVM-SPIRV Translator ###
 
@@ -46,7 +48,7 @@ download, build+install the LLVM-SPIRV translator:
     git checkout -b release_80 origin/llvm_release_80
     mkdir build; cd build
     cmake -DLLVM_DIR=<llvm_destination_dir>/lib/cmake/llvm ..
-    make -j4 llvm-spirv
+    make -jX llvm-spirv
     cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin
 
 ### Known Supported OpenCL Implementations ###
@@ -62,6 +64,7 @@ It's also possible to use a sufficiently recent (2019/07+) [POCL](http://code.po
           -DWITH_LLVM_CONFIG=<llvm_destination_dir>/bin/llvm-config \
           -DLLVM_SPIRV=<llvm_destination_dir>/bin/llvm-spirv \
           [other cmake flags] ..
+    make -jX
     make install
 
 ### Build HIPCL Library ###
@@ -75,6 +78,7 @@ build+install the HIPCL library:
           -DCMAKE_CXX_COMPILER=<llvm_destination_dir>/bin/clang++ \
           -DCMAKE_C_COMPILER=<llvm_destination_dir>/bin/clang \
           [other cmake flags] ..
+    make -jX
     make install
 
 this will produce `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/*.hh}` and
