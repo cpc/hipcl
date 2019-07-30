@@ -49,7 +49,7 @@ endforeach()
 add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/kernellib.bc"
         DEPENDS ${DEPEND_LIST}
-        COMMAND "llvm-link"
+        COMMAND "${LLVM_LINK}"
         -o "${CMAKE_BINARY_DIR}/kernellib.bc"
         ${DEPEND_LIST}
         COMMENT "Linking kernellib.bc"

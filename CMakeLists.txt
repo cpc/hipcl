@@ -15,13 +15,24 @@ enable_testing()
 
 
 if(UNIX AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
-  message("Using Clang")
+  message(STATUS "Using Clang: ${CMAKE_CXX_COMPILER}")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0.0)
     message(FATAL_ERROR "This project requires Clang >= 8.0")
   endif()
 else()
   message(FATAL_ERROR "This project must be compiled with Clang")
 endif()
+
+if(NOT DEFINED LLVM_LINK)
+  get_filename_component(CLANG_BIN_PATH "${CMAKE_CXX_COMPILER}" DIRECTORY)
+  if(EXISTS "${CLANG_BIN_PATH}/llvm-link")
+    set(LLVM_LINK "${CLANG_BIN_PATH}/llvm-link" CACHE PATH "llvm-link")
+  else()
+    message(FATAL_ERROR "Can't find llvm-link at ${CLANG_BIN_PATH}. Please provide CMake argument -DLLVM_LINK=<path/to/llvm-link>")
+  endif()
+endif()
+
+message(STATUS "Using llvm-link: ${LLVM_LINK}")
 
 set(FORBIT_IMPLICIT_FUNCTIONS "-Werror=implicit-function-declaration;-Werror=incompatible-pointer-types")
 add_compile_options(${FORBIT_IMPLICIT_FUNCTIONS})
