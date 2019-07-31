@@ -36,7 +36,7 @@ Download LLVM + Clang:
 Build+install LLVM/Clang:
 
     cmake -DCMAKE_INSTALL_PREFIX=<llvm_destination_dir> [other cmake flags] llvm-git-directory
-    make -jX
+    make
     make install
 
 ### LLVM-SPIRV Translator ###
@@ -48,24 +48,30 @@ download, build+install the LLVM-SPIRV translator:
     git checkout -b release_80 origin/llvm_release_80
     mkdir build; cd build
     cmake -DLLVM_DIR=<llvm_destination_dir>/lib/cmake/llvm ..
-    make -jX llvm-spirv
+    make llvm-spirv
     cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin
 
 ### Known Supported OpenCL Implementations ###
 
 At least Intel's "NEO" OpenCL implementation supports 2.x and SPIR-V on Intel GPUs.
 
-It's also possible to use a sufficiently recent (2019/07+) [POCL](http://code.portablecl.org), but it must be built with LLVM-SPIRV support:
+It's also possible to use a sufficiently recent (2019/07+) [POCL](http://code.portablecl.org),
+but it must be built with LLVM-SPIRV support:
 
     git clone https://github.com/pocl/pocl
     cd pocl
     mkdir build; cd build
-    cmake -DCMAKE_INSTALL_PREFIX=<pocl_destination_dir> \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr \
           -DWITH_LLVM_CONFIG=<llvm_destination_dir>/bin/llvm-config \
           -DLLVM_SPIRV=<llvm_destination_dir>/bin/llvm-spirv \
-          [other cmake flags] ..
-    make -jX
+          ..
+    make
     make install
+
+The last step (`make install`) is optional - it's possible to use Pocl from build directory
+(by exporting some env variables: `POCL_BULDING=1` and `OCL_ICD_VENDORS=<pocl-build-dir>/ocl-vendors`).
+
+Whatever you end up using, make sure that clinfo lists your chosen OpenCL implementation.
 
 ### Build HIPCL Library ###
 
@@ -77,12 +83,16 @@ build+install the HIPCL library:
     cmake -DCMAKE_INSTALL_PREFIX=<hipcl_install_dir> \
           -DCMAKE_CXX_COMPILER=<llvm_destination_dir>/bin/clang++ \
           -DCMAKE_C_COMPILER=<llvm_destination_dir>/bin/clang \
-          [other cmake flags] ..
-    make -jX
-    make install
+          ..
+    make
 
-this will produce `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/*.hh}` and
-also a few examples in `<hipcl_install_dir>/bin` directory.
+The samples directory contains some examples; these can be run from build directory, individually or via ctest.
+
+`make install` will create `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/*.hh}` and
+copy the examples to `<hipcl_install_dir>/bin` directory.
+
+Note that CMake removes RPATH at `make install` time, which means that the samples installed into
+`<hipcl_install_dir>/bin` will look for `libhipcl.so` in the default system library paths (/usr/lib and such).
 
 ### Example ###
 
