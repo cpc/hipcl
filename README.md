@@ -37,7 +37,7 @@ Build+install LLVM/Clang:
 
     cmake -DCMAKE_INSTALL_PREFIX=<llvm_destination_dir> [other cmake flags] llvm-git-directory
     make
-    make install
+    sudo make install
 
 ### LLVM-SPIRV Translator ###
 
@@ -49,7 +49,7 @@ download, build+install the LLVM-SPIRV translator:
     mkdir build; cd build
     cmake -DLLVM_DIR=<llvm_destination_dir>/lib/cmake/llvm ..
     make llvm-spirv
-    cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin
+    sudo cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin/
 
 ### Known Supported OpenCL Implementations ###
 
@@ -58,7 +58,7 @@ At least Intel's "NEO" OpenCL implementation supports 2.x and SPIR-V on Intel GP
 It's also possible to use a sufficiently recent (2019/07+) [POCL](http://code.portablecl.org),
 but it must be built with LLVM-SPIRV support:
 
-    git clone https://github.com/pocl/pocl
+    git clone https://github.com/pocl/pocl.git
     cd pocl
     mkdir build; cd build
     cmake -DCMAKE_INSTALL_PREFIX=/usr \
@@ -66,10 +66,12 @@ but it must be built with LLVM-SPIRV support:
           -DLLVM_SPIRV=<llvm_destination_dir>/bin/llvm-spirv \
           ..
     make
-    make install
+    sudo make install
 
-The last step (`make install`) is optional - it's possible to use Pocl from build directory
+The last step (`sudo make install`) is optional - it's possible to use Pocl from build directory
 (by exporting some env variables: `POCL_BULDING=1` and `OCL_ICD_VENDORS=<pocl-build-dir>/ocl-vendors`).
+Note that -DCMAKE_INSTALL_PREFIX=/usr implies system-wide installation.
+See https://github.com/pocl/pocl/blob/master/doc/sphinx/source/install.rst for details.
 
 Whatever you end up using, make sure that clinfo lists your chosen OpenCL implementation.
 
@@ -77,7 +79,7 @@ Whatever you end up using, make sure that clinfo lists your chosen OpenCL implem
 
 build+install the HIPCL library:
 
-    git clone https://github.com/cpc/hipcl
+    git clone https://github.com/cpc/hipcl.git
     cd hipcl
     mkdir build ; cd build;
     cmake -DCMAKE_INSTALL_PREFIX=<hipcl_install_dir> \
