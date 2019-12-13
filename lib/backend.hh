@@ -164,7 +164,7 @@ class ClProgram {
   OpenCLFunctionInfoMap FuncInfo;
 
 public:
-  ClProgram(cl::Context &C, cl::Device &D) : Program(), Context(C), Device(D) {}
+  ClProgram(cl::Context C, cl::Device D) : Program(), Context(C), Device(D) {}
   ~ClProgram();
 
   bool setup(std::string &binary);
@@ -350,6 +350,7 @@ class ClDevice {
 public:
   ClDevice(cl::Device d, cl::Platform p, hipDevice_t index);
   ClDevice(ClDevice &&rhs);
+  void setPrimaryCtx();
   ~ClDevice();
   void reset();
   cl::Device &getDevice() { return Device; }

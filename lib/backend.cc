@@ -21,7 +21,7 @@
 
 size_t NumDevices = 0;
 
-static std::vector<ClDevice> OpenCLDevices INIT_PRIORITY(120);
+static std::vector<ClDevice *> OpenCLDevices INIT_PRIORITY(120);
 static std::vector<cl::Platform> Platforms INIT_PRIORITY(120);
 
 /********************************/
@@ -565,11 +565,14 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
 ClContext::ClContext(ClDevice *D, unsigned f) {
   Device = D;
   Flags = f;
-  Context = cl::Context(D->getDevice());
   int err;
+  Context = cl::Context(D->getDevice(), NULL, NULL, NULL, &err);
+  assert(err == CL_SUCCESS);
 
   cl::CommandQueue CmdQueue(Context, Device->getDevice(),
                             CL_QUEUE_PROFILING_ENABLE, &err);
+  assert(err == CL_SUCCESS);
+
   DefaultQueue = new ClQueue(CmdQueue, 0, 0);
 
   Memory.init(Context);
@@ -790,7 +793,7 @@ hipError_t ClContext::createProgramBuiltin(std::string *module,
                                            std::string &FunctionName) {
   std::lock_guard<std::mutex> Lock(ContextMutex);
 
-  logDebug("createProB: {}\n", FunctionName);
+  logDebug("createProgramBuiltin: {}\n", FunctionName);
 
   ClProgram *p = new ClProgram(Context, Device->getDevice());
   if (p == nullptr)
@@ -1006,11 +1009,14 @@ ClDevice::ClDevice(cl::Device d, cl::Platform p, hipDevice_t index) {
 
   TotalUsedMem = 0;
   GlobalMemSize = Properties.totalGlobalMem;
+  PrimaryContext = nullptr;
 
-  // TODO this + constructor
+  logDebug("Device {} is {}: name \"{}\" \n",
+           index, (void *)this, Properties.name);
+}
+
+void ClDevice::setPrimaryCtx() {
   PrimaryContext = new ClContext(this, 0);
-
-  logDebug("Device {}: name \"{}\" \n", index, Properties.name);
 }
 
 void ClDevice::reset() {
@@ -1024,6 +1030,7 @@ void ClDevice::reset() {
 
 ClDevice::~ClDevice() {
   delete PrimaryContext;
+  logDebug("Destroy device {}\n", Properties.name);
   for (ClContext *C : Contexts) {
     delete C;
   }
@@ -1180,7 +1187,7 @@ bool ClDevice::getModuleAndFName(const void *HostFunction,
 
 /***********************************************************************/
 
-ClDevice &CLDeviceById(int deviceId) { return OpenCLDevices[deviceId]; }
+ClDevice &CLDeviceById(int deviceId) { return *OpenCLDevices.at(deviceId); }
 
 static void InitializeOpenCLCallOnce() {
 
@@ -1205,7 +1212,9 @@ static void InitializeOpenCLCallOnce() {
       ver.clear();
       ver = Dev.getInfo<CL_DEVICE_IL_VERSION>(&err);
       if ((err == CL_SUCCESS) && (ver.rfind("SPIR-V_1.", 0) == 0)) {
-        OpenCLDevices.emplace_back(Dev, Platform, NumDevices);
+        ClDevice *temp = new ClDevice(Dev, Platform, NumDevices);
+        temp->setPrimaryCtx();
+        OpenCLDevices.emplace_back(temp);
         ++NumDevices;
       }
     }
@@ -1223,7 +1232,9 @@ void InitializeOpenCL() {
 static void UnInitializeOpenCLCallOnce() {
   logDebug("DEVICES UNINITALIZE \n");
 
-  OpenCLDevices.clear();
+  for (ClDevice *d : OpenCLDevices) {
+    delete d;
+  }
 
   for (auto Platform : Platforms) {
     Platform.unloadCompiler();
