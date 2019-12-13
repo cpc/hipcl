@@ -359,6 +359,7 @@ public:
 };
 
 void InitializeOpenCL();
+void UnInitializeOpenCL();
 
 extern size_t NumDevices;
 

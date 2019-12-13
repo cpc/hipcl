@@ -1588,6 +1588,8 @@ hipError_t hipModuleLaunchKernel(hipFunction_t k, unsigned int gridDimX,
 
 #define SPIR_TRIPLE "hip-spir64-unknown-unknown"
 
+static unsigned binaries_loaded = 0;
+
 extern "C" void **__hipRegisterFatBinary(const void *data) {
   InitializeOpenCL();
 
@@ -1647,6 +1649,9 @@ extern "C" void **__hipRegisterFatBinary(const void *data) {
     CLDeviceById(deviceId).registerModule(module);
   }
 
+  ++binaries_loaded;
+  logDebug("__hipRegisterFatBinary {}\n", binaries_loaded);
+
   return (void **)module;
 }
 
@@ -1655,6 +1660,13 @@ extern "C" void __hipUnregisterFatBinary(void *data) {
 
   for (int deviceId = 0; deviceId < NumDevices; ++deviceId) {
     CLDeviceById(deviceId).unregisterModule(module);
+  }
+
+  --binaries_loaded;
+  logDebug("__hipUnRegisterFatBinary {}\n", binaries_loaded);
+
+  if (binaries_loaded == 0) {
+    UnInitializeOpenCL();
   }
 
   delete module;

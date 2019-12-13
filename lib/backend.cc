@@ -22,6 +22,7 @@
 size_t NumDevices = 0;
 
 static std::vector<ClDevice> OpenCLDevices INIT_PRIORITY(120);
+static std::vector<cl::Platform> Platforms INIT_PRIORITY(120);
 
 /********************************/
 
@@ -1075,8 +1076,6 @@ ClDevice &CLDeviceById(int deviceId) { return OpenCLDevices[deviceId]; }
 
 static void InitializeOpenCLCallOnce() {
 
-  std::vector<cl::Platform> Platforms;
-  std::vector<cl::Device> Devices;
   cl_int err = cl::Platform::get(&Platforms);
   std::string ver;
   if (err != CL_SUCCESS)
@@ -1084,6 +1083,7 @@ static void InitializeOpenCLCallOnce() {
 
   OpenCLDevices.clear();
   NumDevices = 0;
+  std::vector<cl::Device> Devices;
 
   for (auto Platform : Platforms) {
     Devices.clear();
@@ -1110,6 +1110,23 @@ static void InitializeOpenCLCallOnce() {
 void InitializeOpenCL() {
   static std::once_flag OpenClInitialized;
   std::call_once(OpenClInitialized, InitializeOpenCLCallOnce);
+}
+
+static void UnInitializeOpenCLCallOnce() {
+  logDebug("DEVICES UNINITALIZE \n");
+
+  OpenCLDevices.clear();
+
+  for (auto Platform : Platforms) {
+    Platform.unloadCompiler();
+  }
+
+  // spdlog::details::os::sleep_for_millis(18000);
+}
+
+void UnInitializeOpenCL() {
+  static std::once_flag OpenClUnInitialized;
+  std::call_once(OpenClUnInitialized, UnInitializeOpenCLCallOnce);
 }
 
 #ifdef __GNUC__
