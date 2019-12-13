@@ -14,11 +14,11 @@
 const std::string OpenCL_STD{"OpenCL.std"};
 
 class SPIRVtype {
-  int32_t id;
   size_t z;
 
 public:
-  SPIRVtype(int32_t id, size_t s) : id(id), z(s) {}
+  SPIRVtype(size_t s) : z(s) {}
+  virtual ~SPIRVtype(){};
   size_t size() { return z; }
   virtual OCLType ocltype() = 0;
   virtual OCLSpace getAS() { return OCLSpace::Private; }
@@ -29,7 +29,8 @@ typedef std::map<int32_t, SPIRVtype *> SPIRTypeMap;
 class SPIRVtypePOD : public SPIRVtype {
 
 public:
-  SPIRVtypePOD(int32_t id, size_t size) : SPIRVtype(id, size) {}
+  SPIRVtypePOD(int32_t id, size_t size) : SPIRVtype(size) {}
+  virtual ~SPIRVtypePOD(){};
   virtual OCLType ocltype() override { return OCLType::POD; }
 };
 
@@ -38,7 +39,7 @@ class SPIRVtypePointer : public SPIRVtype {
 
 public:
   SPIRVtypePointer(int32_t id, int32_t stor_class, size_t pointerSize)
-      : SPIRVtype(id, pointerSize) {
+      : SPIRVtype(pointerSize) {
     switch (stor_class) {
     case (int32_t)spv::StorageClass::CrossWorkgroup:
       ASpace = OCLSpace::Global;
@@ -56,6 +57,7 @@ public:
       ASpace = OCLSpace::Unknown;
     }
   }
+  virtual ~SPIRVtypePointer(){};
   virtual OCLType ocltype() override { return OCLType::Pointer; }
   OCLSpace getAS() override { return ASpace; }
 };
@@ -226,6 +228,12 @@ class SPIRVmodule {
   bool parseOK;
 
 public:
+  ~SPIRVmodule() {
+    for (auto I : typeMap) {
+      delete I.second;
+    }
+  }
+
   bool valid() {
     return headerOK && kernelCapab && extIntOpenCL && languageCL &&
            memModelCL && parseOK;
@@ -345,6 +353,5 @@ bool parseSPIR(int32_t *stream, size_t numWords,
   SPIRVmodule Mod;
   if (!Mod.parseSPIRV(stream, numWords))
     return false;
-  Mod.fillModuleInfo(output);
-  return true;
+  return Mod.fillModuleInfo(output);
 }
