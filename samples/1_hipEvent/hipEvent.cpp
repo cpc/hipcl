@@ -147,6 +147,9 @@ int main() {
         printf("PASSED!\n");
     }
 
+    hipEventDestroy(start);
+    hipEventDestroy(stop);
+
     // free the resources on device side
     hipFree(gpuMatrix);
     hipFree(gpuTransposeMatrix);
