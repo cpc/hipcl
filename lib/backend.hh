@@ -99,7 +99,7 @@ void logCritical(const char *fmt, const Args &... args) {
 
 class ClEvent {
   std::mutex EventMutex;
-  cl::Event Event;
+  cl::Event *Event;
   hipStream_t Stream;
   event_status_e Status;
   unsigned Flags;
@@ -109,13 +109,18 @@ public:
   ClEvent(cl::Context &c, unsigned flags)
       : Event(), Stream(nullptr), Status(EVENT_STATUS_INIT), Flags(flags),
         Context(c) {}
-  ~ClEvent() {}
+
+  ~ClEvent() {
+    if (Event)
+      delete Event;
+  }
 
   uint64_t getFinishTime();
-  cl::Event &getEvent() { return Event; }
+  cl::Event getEvent() { return *Event; }
   bool isFromContext(cl::Context &Other) { return (Context == Other); }
+  bool isFromStream(hipStream_t &Other) { return (Stream == Other); }
   bool wasRecorded() const { return (Status == EVENT_STATUS_RECORDED); }
-  bool recordStream(hipStream_t S, cl::Event &E);
+  bool recordStream(hipStream_t S, cl_event E);
   bool wait();
   bool isFinished();
 };
@@ -125,7 +130,6 @@ typedef std::map<const void *, std::vector<hipFunction_t>> hipFunctionMap;
 class ExecItem;
 
 class ClKernel {
-  std::mutex KernelMutex;
   cl::Kernel Kernel;
   std::string Name;
   OCLFuncInfo *FuncInfo;
@@ -141,13 +145,13 @@ public:
 
   bool isNamed(const std::string &arg) const { return Name == arg; }
   bool isFromContext(const cl::Context &arg) const { return Context == arg; }
+  cl::Kernel get() const { return Kernel; }
+  OCLFuncInfo *getFuncInfo() const { return FuncInfo; }
 
   int setAllArgs(void **args);
   int setAllArgs(void *args, size_t size);
   size_t getTotalArgSize() const { return TotalArgSize; }
 
-  hipError_t launch(ExecItem *ei);
-  hipError_t launch3(cl::CommandQueue &Queue, dim3 GridDim, dim3 BlockDim);
 };
 
 /********************************/
@@ -200,36 +204,28 @@ public:
   void clear();
 };
 
-class ExecItem {
-
-  dim3 GridDim;
-  dim3 BlockDim;
-  size_t SharedMem;
-  cl::CommandQueue Queue;
-  std::vector<uint8_t> ArgData;
-  std::vector<std::tuple<size_t, size_t>> OffsetsSizes;
-
-public:
-  ExecItem(dim3 grid, dim3 block, size_t shared, cl::CommandQueue q)
-      : GridDim(grid), BlockDim(block), SharedMem(shared), Queue(q) {}
-
-  void setArg(const void *arg, size_t size, size_t offset);
-  int setupAndLaunch(cl::Kernel &kernel, OCLFuncInfo *FuncInfo);
-};
-
 class ClQueue {
+  std::mutex QueueMutex;
   cl::CommandQueue Queue;
-  cl::Context Context;
+  cl_event LastEvent;
   unsigned int Flags;
   int Priority;
 
 public:
   ClQueue(cl::CommandQueue q, unsigned int f, int p)
-      : Queue(q), Flags(f), Priority(p) {}
+    : Queue(q), LastEvent(nullptr), Flags(f), Priority(p) {}
+
+  ~ClQueue() {
+    if (LastEvent) {
+      logDebug("~ClQueue: Releasing last event {}", (void*)LastEvent);
+      clReleaseEvent(LastEvent);
+    }
+  }
 
   ClQueue(ClQueue &&rhs) {
     Flags = rhs.Flags;
     Priority = rhs.Priority;
+    LastEvent = rhs.LastEvent;
     Queue = std::move(rhs.Queue);
   }
 
@@ -242,9 +238,32 @@ public:
   bool addCallback(hipStreamCallback_t callback, void *userData);
   bool recordEvent(hipEvent_t e);
 
-  bool memCopy(void *dst, const void *src, size_t size);
-  bool memFill(void *dst, size_t size, void *pattern, size_t pat_size);
+  hipError_t memCopy(void *dst, const void *src, size_t size);
+  hipError_t memFill(void *dst, size_t size, void *pattern, size_t pat_size);
+  hipError_t launch3(ClKernel *Kernel, dim3 grid, dim3 block);
+  hipError_t launch(ClKernel *Kernel, ExecItem *Arguments);
 };
+
+class ExecItem {
+
+  size_t SharedMem;
+  hipStream_t Stream;
+  std::vector<uint8_t> ArgData;
+  std::vector<std::tuple<size_t, size_t>> OffsetsSizes;
+
+public:
+  dim3 GridDim;
+  dim3 BlockDim;
+
+  ExecItem(dim3 grid, dim3 block, size_t shared, hipStream_t q)
+      : SharedMem(shared), Stream(q), GridDim(grid), BlockDim(block) {}
+
+  void setArg(const void *arg, size_t size, size_t offset);
+  int setupAllArgs(ClKernel *kernel);
+
+  hipError_t launch(ClKernel *Kernel) { return Stream->launch(Kernel, this); }
+};
+
 
 class ClDevice;
 

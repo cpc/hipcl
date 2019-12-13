@@ -31,7 +31,7 @@ bool ClEvent::isFinished() {
   if (Status != EVENT_STATUS_RECORDING)
     return false;
 
-  int Stat = Event.getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>();
+  int Stat = Event->getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>();
   if (Stat <= CL_COMPLETE) {
     Status = EVENT_STATUS_RECORDED;
     return true;
@@ -39,12 +39,20 @@ bool ClEvent::isFinished() {
   return false;
 }
 
-bool ClEvent::recordStream(hipStream_t S, cl::Event &E) {
+bool ClEvent::recordStream(hipStream_t S, cl_event E) {
   std::lock_guard<std::mutex> Lock(EventMutex);
 
   Stream = S;
   Status = EVENT_STATUS_RECORDING;
-  Event = std::move(E);
+
+  if (Event != nullptr) {
+    cl_uint refc = Event->getInfo<CL_EVENT_REFERENCE_COUNT>();
+    logDebug("removing old event, refc: {}\n", refc);
+
+    delete Event;
+  }
+
+  Event = new cl::Event(E, true);
   return true;
 }
 
@@ -53,7 +61,7 @@ bool ClEvent::wait() {
   if (Status != EVENT_STATUS_RECORDING)
     return false;
 
-  Event.wait();
+  Event->wait();
   Status = EVENT_STATUS_RECORDED;
   return true;
 }
@@ -61,7 +69,7 @@ bool ClEvent::wait() {
 uint64_t ClEvent::getFinishTime() {
   std::lock_guard<std::mutex> Lock(EventMutex);
   int err;
-  uint64_t ret = Event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+  uint64_t ret = Event->getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
   assert(err == CL_SUCCESS);
   return ret;
 }
@@ -105,7 +113,6 @@ bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
 }
 
 int ClKernel::setAllArgs(void **args) {
-  std::lock_guard<std::mutex> Lock(KernelMutex);
   void *p;
   int err;
 
@@ -133,7 +140,6 @@ int ClKernel::setAllArgs(void **args) {
 }
 
 int ClKernel::setAllArgs(void *args, size_t size) {
-  std::lock_guard<std::mutex> Lock(KernelMutex);
   void *p = args;
   int err;
 
@@ -161,29 +167,6 @@ int ClKernel::setAllArgs(void *args, size_t size) {
     p = (char *)p + ai.size;
   }
   return 0;
-}
-
-hipError_t ClKernel::launch(ExecItem *ei) {
-  std::lock_guard<std::mutex> Lock(KernelMutex);
-  if (ei->setupAndLaunch(Kernel, FuncInfo) == CL_SUCCESS)
-    return hipSuccess;
-  else
-    return hipErrorLaunchFailure;
-}
-
-hipError_t ClKernel::launch3(cl::CommandQueue &Queue, dim3 GridDim,
-                             dim3 BlockDim) {
-  std::lock_guard<std::mutex> Lock(KernelMutex);
-
-  const cl::NDRange global(GridDim.x * BlockDim.x, GridDim.y * BlockDim.y,
-                           GridDim.z * BlockDim.z);
-  const cl::NDRange local(BlockDim.x, BlockDim.y, BlockDim.z);
-
-  if (Queue.enqueueNDRangeKernel(Kernel, cl::NullRange, global, local) ==
-      CL_SUCCESS)
-    return hipSuccess;
-  else
-    return hipErrorLaunchFailure;
 }
 
 /********************************/
@@ -335,16 +318,43 @@ void SVMemoryRegion::clear() {
 
 /***********************************************************************/
 
-bool ClQueue::memCopy(void *dst, const void *src, size_t size) {
+hipError_t ClQueue::memCopy(void *dst, const void *src, size_t size) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+
   logDebug("clSVMmemcpy {} -> {} / {} B\n", src, dst, size);
-  return ::clEnqueueSVMMemcpy(Queue(), CL_FALSE, dst, src, size, 0, nullptr,
-                              nullptr) == CL_SUCCESS;
+  cl_event ev = nullptr;
+  int retval =
+      ::clEnqueueSVMMemcpy(Queue(), CL_FALSE, dst, src, size, 0, nullptr, &ev);
+  if (retval == CL_SUCCESS) {
+    if (LastEvent != nullptr) {
+      logDebug("memCopy: LastEvent == {}, will be: {}", (void *)LastEvent,
+               (void *)ev);
+      clReleaseEvent(LastEvent);
+    } else
+      logDebug("memCopy: LastEvent == NULL, will be: {}\n", (void *)ev);
+    LastEvent = ev;
+  }
+  return (retval == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 }
 
-bool ClQueue::memFill(void *dst, size_t size, void *pattern, size_t patt_size) {
+hipError_t ClQueue::memFill(void *dst, size_t size, void *pattern,
+                            size_t patt_size) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+
   logDebug("clSVMmemfill {} / {} B\n", dst, size);
-  return ::clEnqueueSVMMemFill(Queue(), dst, pattern, patt_size, size, 0,
-                               nullptr, nullptr) == CL_SUCCESS;
+  cl_event ev = nullptr;
+  int retval = ::clEnqueueSVMMemFill(Queue(), dst, pattern, patt_size, size, 0,
+                                     nullptr, &ev);
+  if (retval == CL_SUCCESS) {
+    if (LastEvent != nullptr) {
+      logDebug("memFill: LastEvent == {}, will be: {}", (void *)LastEvent,
+               (void *)ev);
+      clReleaseEvent(LastEvent);
+    } else
+      logDebug("memFill: LastEvent == NULL, will be: {}\n", (void *)ev);
+    LastEvent = ev;
+  }
+  return (retval == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 }
 
 bool ClQueue::finish() { return Queue.finish() == CL_SUCCESS; }
@@ -356,43 +366,144 @@ static void notifyOpenCLevent(cl_event event, cl_int status, void *data) {
 }
 
 bool ClQueue::addCallback(hipStreamCallback_t callback, void *userData) {
-  cl::Event Event;
-  int err = Queue.enqueueMarkerWithWaitList(nullptr, &Event);
-  if (err != CL_SUCCESS)
-    return false;
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+
+  int err;
+  if (LastEvent == nullptr) {
+    callback(this, hipSuccess, userData);
+    return true;
+  }
 
   hipStreamCallbackData *Data = new hipStreamCallbackData{};
   Data->Stream = this;
   Data->Callback = callback;
   Data->UserData = userData;
   Data->Status = hipSuccess;
-  err = Event.setCallback(CL_COMPLETE, notifyOpenCLevent, Data);
+  err = ::clSetEventCallback(LastEvent, CL_COMPLETE, notifyOpenCLevent, Data);
   return (err == CL_SUCCESS);
 }
 
 bool ClQueue::enqueueBarrierForEvent(hipEvent_t ProvidedEvent) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+  // CUDA API cudaStreamWaitEvent:
+  // event may be from a different device than stream.
 
   cl::Event MarkerEvent;
   logDebug("Queue is: {}\n", (void *)(Queue()));
   int err = Queue.enqueueMarkerWithWaitList(nullptr, &MarkerEvent);
   if (err != CL_SUCCESS)
     return false;
+
   cl::vector<cl::Event> Events = {MarkerEvent, ProvidedEvent->getEvent()};
-  err = Queue.enqueueBarrierWithWaitList(&Events, nullptr);
+  cl::Event barrier;
+  err = Queue.enqueueBarrierWithWaitList(&Events, &barrier);
   if (err != CL_SUCCESS)
     return false;
+
+  if (LastEvent)
+    clReleaseEvent(LastEvent);
+  LastEvent = barrier();
 
   return true;
 }
 
 bool ClQueue::recordEvent(hipEvent_t event) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
 
-  cl::Event MarkerEvent;
-  logDebug("record Event: {} on Queue: {}\n", (void *)(event),
+  /* slightly tricky WRT refcounts.
+   * if LastEvents != NULL, it should have refcount 1.
+   * if NULL, enqueue a marker here;
+   * libOpenCL will process it & decrease refc to 1;
+   * we retain it here because d-tor is called at } and releases it.
+   *
+   * in both cases, event->recordStream should Retain */
+  if (LastEvent == nullptr) {
+    cl::Event MarkerEvent;
+    Queue.enqueueMarkerWithWaitList(nullptr, &MarkerEvent);
+    LastEvent = MarkerEvent();
+    clRetainEvent(LastEvent);
+  }
+
+  logDebug("record Event: {} on Queue: {}\n", (void *)(LastEvent),
            (void *)(Queue()));
-  Queue.enqueueMarkerWithWaitList(nullptr, &MarkerEvent);
 
-  return event->recordStream(this, MarkerEvent);
+  cl_uint refc1, refc2;
+  int err =
+      ::clGetEventInfo(LastEvent, CL_EVENT_REFERENCE_COUNT, 4, &refc1, NULL);
+  assert(err == CL_SUCCESS);
+  // can be >1 because recordEvent can be called >1 on the same event
+  assert(refc1 >= 1);
+
+  return event->recordStream(this, LastEvent);
+
+  err = ::clGetEventInfo(LastEvent, CL_EVENT_REFERENCE_COUNT, 4, &refc2, NULL);
+  assert(err == CL_SUCCESS);
+  assert(refc2 >= 2);
+  assert(refc2 == (refc1 + 1));
+}
+
+hipError_t ClQueue::launch(ClKernel *Kernel, ExecItem *Arguments) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+
+  if (Arguments->setupAllArgs(Kernel) != CL_SUCCESS)
+    return hipErrorLaunchFailure;
+
+  dim3 GridDim = Arguments->GridDim;
+  dim3 BlockDim = Arguments->BlockDim;
+
+  const cl::NDRange global(GridDim.x * BlockDim.x, GridDim.y * BlockDim.y,
+                           GridDim.z * BlockDim.z);
+  const cl::NDRange local(BlockDim.x, BlockDim.y, BlockDim.z);
+
+  cl::Event ev;
+  int err = Queue.enqueueNDRangeKernel(Kernel->get(), cl::NullRange, global,
+                                       local, nullptr, &ev);
+
+  hipError_t retval = (err == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
+
+  if (retval == hipSuccess) {
+    if (LastEvent != nullptr) {
+      logDebug("Launch: LastEvent == {}, will be: {}", (void *)LastEvent,
+               (void *)ev.get());
+      clReleaseEvent(LastEvent);
+    } else
+      logDebug("launch: LastEvent == NULL, will be: {}\n", (void *)ev.get());
+    LastEvent = ev.get();
+    clRetainEvent(LastEvent);
+  }
+
+  delete Arguments;
+  return retval;
+}
+
+hipError_t ClQueue::launch3(ClKernel *Kernel, dim3 grid, dim3 block) {
+  std::lock_guard<std::mutex> Lock(QueueMutex);
+
+  dim3 GridDim = grid;
+  dim3 BlockDim = block;
+
+  const cl::NDRange global(GridDim.x * BlockDim.x, GridDim.y * BlockDim.y,
+                           GridDim.z * BlockDim.z);
+  const cl::NDRange local(BlockDim.x, BlockDim.y, BlockDim.z);
+
+  cl::Event ev;
+  int err = Queue.enqueueNDRangeKernel(Kernel->get(), cl::NullRange, global,
+                                       local, nullptr, &ev);
+
+  hipError_t retval = (err == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
+
+  if (retval == hipSuccess) {
+    if (LastEvent != nullptr) {
+      logDebug("Launch3: LastEvent == {}, will be: {}", (void *)LastEvent,
+               (void *)ev.get());
+      clReleaseEvent(LastEvent);
+    } else
+      logDebug("launch3: LastEvent == NULL, will be: {}\n", (void *)ev.get());
+    LastEvent = ev.get();
+    clRetainEvent(LastEvent);
+  }
+
+  return retval;
 }
 
 /***********************************************************************/
@@ -406,7 +517,8 @@ void ExecItem::setArg(const void *arg, size_t size, size_t offset) {
   OffsetsSizes.push_back(std::make_tuple(offset, size));
 }
 
-int ExecItem::setupAndLaunch(cl::Kernel &kernel, OCLFuncInfo *FuncInfo) {
+int ExecItem::setupAllArgs(ClKernel *kernel) {
+  OCLFuncInfo *FuncInfo = kernel->getFuncInfo();
   assert(OffsetsSizes.size() == FuncInfo->ArgTypeInfo.size());
 
   std::sort(OffsetsSizes.begin(), OffsetsSizes.end());
@@ -431,25 +543,21 @@ int ExecItem::setupAndLaunch(cl::Kernel &kernel, OCLFuncInfo *FuncInfo) {
       assert(std::get<1>(OffsetsSizes[i]) == ai.size);
       p = *(void **)(start + std::get<0>(OffsetsSizes[i]));
       logDebug("setArg SVM {} to {}\n", i, p);
-      err = ::clSetKernelArgSVMPointer(kernel(), i, p);
+      err = ::clSetKernelArgSVMPointer(kernel->get().get(), i, p);
       logDebug("ERR {}\n", err);
       if (err != CL_SUCCESS)
         return err;
     } else {
       logDebug("setArg {}\n", i);
-      err = ::clSetKernelArg(kernel(), i, std::get<1>(OffsetsSizes[i]),
-                             (start + std::get<0>(OffsetsSizes[i])));
+      err =
+          ::clSetKernelArg(kernel->get().get(), i, std::get<1>(OffsetsSizes[i]),
+                           (start + std::get<0>(OffsetsSizes[i])));
       logDebug("ERR {}\n", err);
       if (err != CL_SUCCESS)
         return err;
     }
   }
-
-  const cl::NDRange global(GridDim.x * BlockDim.x, GridDim.y * BlockDim.y,
-                           GridDim.z * BlockDim.z);
-  const cl::NDRange local(BlockDim.x, BlockDim.y, BlockDim.z);
-
-  return Queue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
+  return CL_SUCCESS;
 }
 
 /***********************************************************************/
@@ -569,7 +677,7 @@ hipError_t ClContext::memCopy(void *dst, const void *src, size_t size,
   FIND_QUEUE_LOCKED(stream);
 
   if (Memory.hasPointer(dst) || Memory.hasPointer(src))
-    return Queue->memCopy(dst, src, size) ? hipSuccess : hipErrorLaunchFailure;
+    return Queue->memCopy(dst, src, size);
   else
     return hipErrorInvalidDevicePointer;
 }
@@ -581,8 +689,7 @@ hipError_t ClContext::memFill(void *dst, size_t size, void *pattern,
   if (!Memory.hasPointer(dst))
     return hipErrorInvalidDevicePointer;
 
-  return Queue->memFill(dst, size, pattern, pat_size) ? hipSuccess
-                                                      : hipErrorLaunchFailure;
+  return Queue->memFill(dst, size, pattern, pat_size);
 }
 
 hipError_t ClContext::recordEvent(hipStream_t stream, hipEvent_t event) {
@@ -665,7 +772,7 @@ hipError_t ClContext::configureCall(dim3 grid, dim3 block, size_t shared,
                                     hipStream_t stream) {
   FIND_QUEUE_LOCKED(stream);
 
-  ExecItem *NewItem = new ExecItem(grid, block, shared, Queue->getQueue());
+  ExecItem *NewItem = new ExecItem(grid, block, shared, Queue);
   ExecStack.push(NewItem);
 
   return hipSuccess;
@@ -736,7 +843,8 @@ hipError_t ClContext::launchHostFunc(const void *HostFunction) {
   ExecItem *Arguments;
   Arguments = ExecStack.top();
   ExecStack.pop();
-  return Kernel->launch(Arguments);
+
+  return Arguments->launch(Kernel);
 }
 
 hipError_t ClContext::launchWithKernelParams(dim3 grid, dim3 block,
@@ -752,7 +860,7 @@ hipError_t ClContext::launchWithKernelParams(dim3 grid, dim3 block,
   if (err != CL_SUCCESS)
     return hipErrorLaunchFailure;
 
-  return kernel->launch3(Queue->getQueue(), grid, block);
+  return stream->launch3(kernel, grid, block);
 }
 
 hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
@@ -798,7 +906,7 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
   if (err != CL_SUCCESS)
     return hipErrorLaunchFailure;
 
-  return kernel->launch3(Queue->getQueue(), grid, block);
+  return stream->launch3(kernel, grid, block);
 }
 
 ClProgram *ClContext::createProgram(std::string &binary) {
