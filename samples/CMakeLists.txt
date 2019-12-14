@@ -4,6 +4,7 @@ set(SAMPLES
     bit_extract
     hcc_dialects
     0_MatrixTranspose
+    0_MatrixMultiply
     1_hipEvent
     3_shared_memory
 #    6_dynamic_shared
