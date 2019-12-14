@@ -232,10 +232,11 @@ ClProgram::~ClProgram() {
   }
   Kernels.clear();
 
-  for (auto &kv : FuncInfo) {
-    OCLFuncInfo *o = kv.second;
-    delete o;
-  }
+  std::set<OCLFuncInfo *> PtrsToDelete;
+  for (auto &kv : FuncInfo)
+    PtrsToDelete.insert(kv.second);
+  for (auto &Ptr : PtrsToDelete)
+    delete Ptr;
 }
 
 hipFunction_t ClProgram::getKernel(std::string &name) {
