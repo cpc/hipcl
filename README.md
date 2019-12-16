@@ -113,7 +113,7 @@ This should produce a source with CUDA API translated to HIP API calls. To build
 
 Compile:
 
-    export CXX_FLAGS="-x hip --target=x86_64-linux-gnu --hip-device-lib-path=<hipcl_install_dir>/share --hip-device-lib=mathlib.bc -pthread -std=c++11"
+    export CXX_FLAGS="-x hip --target=x86_64-linux-gnu --hip-device-lib-path=<hipcl_install_dir>/share --hip-device-lib=kernellib.bc -pthread -std=c++11"
     export CXX_INCLUDES="-I<hipcl_install_dir>/include"
     <llvm_destination_dir>/bin/clang++ $CXX_INCLUDES $CXX_FLAGS -o example.o -c example_hip.cc
 
