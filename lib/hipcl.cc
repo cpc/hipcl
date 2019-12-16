@@ -781,10 +781,7 @@ hipError_t hipEventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop) {
   ClContext *cont = getTlsDefaultCtx();
   ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
 
-  if (cont->eventElapsedTime(ms, start, stop))
-    RETURN(hipSuccess);
-  else
-    RETURN(hipErrorInvalidValue);
+  RETURN(cont->eventElapsedTime(ms, start, stop));
 }
 
 hipError_t hipEventQuery(hipEvent_t event) {

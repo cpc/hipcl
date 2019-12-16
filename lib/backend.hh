@@ -119,10 +119,11 @@ public:
   cl::Event getEvent() { return *Event; }
   bool isFromContext(cl::Context &Other) { return (Context == Other); }
   bool isFromStream(hipStream_t &Other) { return (Stream == Other); }
-  bool wasRecorded() const { return (Status == EVENT_STATUS_RECORDED); }
+  bool isFinished() const { return (Status == EVENT_STATUS_RECORDED); }
+  bool isRecordingOrRecorded() const { return (Status >= EVENT_STATUS_RECORDING); }
   bool recordStream(hipStream_t S, cl_event E);
+  bool updateFinishStatus();
   bool wait();
-  bool isFinished();
 };
 
 typedef std::map<const void *, std::vector<hipFunction_t>> hipFunctionMap;
@@ -293,7 +294,7 @@ public:
   hipStream_t getDefaultQueue() { return DefaultQueue; }
   void reset();
 
-  bool eventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop);
+  hipError_t eventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop);
   ClEvent *createEvent(unsigned Flags);
   bool createQueue(hipStream_t *stream, unsigned int Flags, int priority);
   bool releaseQueue(hipStream_t stream);

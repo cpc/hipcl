@@ -26,7 +26,7 @@ static std::vector<cl::Platform> Platforms INIT_PRIORITY(120);
 
 /********************************/
 
-bool ClEvent::isFinished() {
+bool ClEvent::updateFinishStatus() {
   std::lock_guard<std::mutex> Lock(EventMutex);
   if (Status != EVENT_STATUS_RECORDING)
     return false;
@@ -704,14 +704,20 @@ hipError_t ClContext::recordEvent(hipStream_t stream, hipEvent_t event) {
 
 #define NANOSECS 1000000000
 
-bool ClContext::eventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop) {
+hipError_t ClContext::eventElapsedTime(float *ms, hipEvent_t start,
+                                       hipEvent_t stop) {
   std::lock_guard<std::mutex> Lock(ContextMutex);
 
   assert(start->isFromContext(Context));
   assert(stop->isFromContext(Context));
 
-  if (!stop->wasRecorded())
-    return false;
+  if (!start->isRecordingOrRecorded() || !stop->isRecordingOrRecorded())
+    return hipErrorInvalidResourceHandle;
+
+  start->updateFinishStatus();
+  stop->updateFinishStatus();
+  if (!start->isFinished() || !stop->isFinished())
+    return hipErrorNotReady;
 
   uint64_t Started = start->getFinishTime();
   uint64_t Finished = stop->getFinishTime();
@@ -731,7 +737,7 @@ bool ClContext::eventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop) {
   uint64_t NS = Elapsed % NANOSECS;
   float FractInMS = ((float)NS) / 1000000.0f;
   *ms = (float)S + FractInMS;
-  return true;
+  return hipSuccess;
 }
 
 bool ClContext::createQueue(hipStream_t *stream, unsigned flags, int priority) {
