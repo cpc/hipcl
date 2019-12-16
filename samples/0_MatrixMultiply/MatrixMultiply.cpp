@@ -204,9 +204,13 @@ int main() {
         Matrix2[i] = rnd();
     }
 
-    hipEvent_t start, stop;
-    hipEventCreate(&start);
-    hipEventCreate(&stop);
+    hipEvent_t start1, stop1, start2, stop2, start3, stop3;
+    hipEventCreate(&start1);
+    hipEventCreate(&stop1);
+    hipEventCreate(&start2);
+    hipEventCreate(&stop2);
+    hipEventCreate(&start3);
+    hipEventCreate(&stop3);
     float eventMs = 1.0f;
 
     // allocate the memory on the device side
@@ -214,18 +218,13 @@ int main() {
     hipMalloc((void**)&gpuMatrix2, NUM * sizeof(float));
     hipMalloc((void**)&gpuMultiplyMatrix, NUM * sizeof(float));
 
-    hipEventRecord(start, NULL);
+    hipEventRecord(start1, NULL);
     // Memory transfer from host to device
     hipMemcpy(gpuMatrix1, Matrix1, NUM * sizeof(float), hipMemcpyHostToDevice);
     hipMemcpy(gpuMatrix2, Matrix2, NUM * sizeof(float), hipMemcpyHostToDevice);
-    hipEventRecord(stop, NULL);
-    hipEventSynchronize(stop);
+    hipEventRecord(stop1, NULL);
 
-    err = hipEventElapsedTime(&eventMs, start, stop);
-    assert (err == hipSuccess);
-    printf("hipMemcpyHostToDevice time taken  = %6.3fms\n", eventMs);
-
-    hipEventRecord(start, NULL);
+    hipEventRecord(start2, NULL);
     // Lauching kernel from host
     hipLaunchKernelGGL(gpuMatrixMul,
 #ifndef MM_SHARED
@@ -237,20 +236,24 @@ int main() {
 #endif
                        0, 0,
                        gpuMatrix1, gpuMatrix2, gpuMultiplyMatrix, WIDTH, WIDTH, WIDTH);
-    hipEventRecord(stop, NULL);
-    hipEventSynchronize(stop);
+    hipEventRecord(stop2, NULL);
 
-    err = hipEventElapsedTime(&eventMs, start, stop);
-    assert (err == hipSuccess);
-    printf("hipLaunchKernel time taken  = %6.3fms\n", eventMs);
-
-    hipEventRecord(start, NULL);
+    hipEventRecord(start3, NULL);
     // Memory transfer from device to host
     hipMemcpy(MultiplyMatrix, gpuMultiplyMatrix, NUM * sizeof(float), hipMemcpyDeviceToHost);
-    hipEventRecord(stop, NULL);
-    hipEventSynchronize(stop);
+    hipEventRecord(stop3, NULL);
 
-    err = hipEventElapsedTime(&eventMs, start, stop);
+    hipDeviceSynchronize();
+
+    err = hipEventElapsedTime(&eventMs, start1, stop1);
+    assert(err == hipSuccess);
+    printf("hipMemcpyHostToDevice time taken  = %6.3fms\n", eventMs);
+
+    err = hipEventElapsedTime(&eventMs, start2, stop2);
+    assert(err == hipSuccess);
+    printf("hipLaunchKernel time taken  = %6.3fms\n", eventMs);
+
+    err = hipEventElapsedTime(&eventMs, start3, stop3);
     assert (err == hipSuccess);
     printf("hipMemcpyDeviceToHost time taken  = %6.3fms\n", eventMs);
 
@@ -282,6 +285,13 @@ int main() {
     } else {
         printf("Verification PASSED!\n");
     }
+
+    hipEventDestroy(start1);
+    hipEventDestroy(stop1);
+    hipEventDestroy(start2);
+    hipEventDestroy(stop2);
+    hipEventDestroy(start3);
+    hipEventDestroy(stop3);
 
     // free the resources on device side
     hipFree(gpuMatrix1);
