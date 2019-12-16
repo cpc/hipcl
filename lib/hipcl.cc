@@ -1645,6 +1645,8 @@ extern "C" void **__hipRegisterFatBinary(const void *data) {
   size_t string_size = desc->size;
   module->assign(string_data, string_size);
 
+  logDebug("Register module: {} \n", (void *)module);
+
   for (size_t deviceId = 0; deviceId < NumDevices; ++deviceId) {
     CLDeviceById(deviceId).registerModule(module);
   }
@@ -1658,7 +1660,8 @@ extern "C" void **__hipRegisterFatBinary(const void *data) {
 extern "C" void __hipUnregisterFatBinary(void *data) {
   std::string *module = reinterpret_cast<std::string *>(data);
 
-  for (int deviceId = 0; deviceId < NumDevices; ++deviceId) {
+  logDebug("Unregister module: {} \n", (void *)module);
+  for (size_t deviceId = 0; deviceId < NumDevices; ++deviceId) {
     CLDeviceById(deviceId).unregisterModule(module);
   }
 
@@ -1681,8 +1684,9 @@ extern "C" void __hipRegisterFunction(void **data, const void *hostFunction,
   InitializeOpenCL();
 
   std::string *module = reinterpret_cast<std::string *>(data);
+  logDebug("RegisterFunction on module {}\n", (void *)module);
 
-  for (int deviceId = 0; deviceId < NumDevices; ++deviceId) {
+  for (size_t deviceId = 0; deviceId < NumDevices; ++deviceId) {
 
     if (CLDeviceById(deviceId).registerFunction(module, hostFunction,
                                                 deviceName)) {

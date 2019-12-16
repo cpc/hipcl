@@ -1128,27 +1128,30 @@ void ClDevice::unregisterModule(std::string *module) {
   std::lock_guard<std::mutex> Lock(DeviceMutex);
 
   auto it = std::find(Modules.begin(), Modules.end(), module);
-  Modules.erase(it);
+  if (it == Modules.end()) {
+    logCritical("unregisterModule: couldn't find {}\n", (void *)module);
+    return;
+  } else
+    Modules.erase(it);
 
   const void *HostFunction = nullptr;
   std::map<const void *, std::string *>::iterator it2, e;
+
   for (it2 = HostPtrToModuleMap.begin(), e = HostPtrToModuleMap.end(); it2 != e;
        ++it2) {
+
     if (it2->second == module) {
       HostFunction = it2->first;
+      HostPtrToModuleMap.erase(it2);
+      auto it3 = HostPtrToNameMap.find(HostFunction);
+      HostPtrToNameMap.erase(it3);
+      PrimaryContext->destroyProgramBuiltin(HostFunction);
+      for (ClContext *C : Contexts) {
+        C->destroyProgramBuiltin(HostFunction);
+      }
       break;
     }
-  }
 
-  assert(HostFunction);
-  HostPtrToModuleMap.erase(it2);
-  auto it3 = HostPtrToNameMap.find(HostFunction);
-  HostPtrToNameMap.erase(it3);
-
-  PrimaryContext->destroyProgramBuiltin(HostFunction);
-
-  for (ClContext *C : Contexts) {
-    C->destroyProgramBuiltin(HostFunction);
   }
 }
 
