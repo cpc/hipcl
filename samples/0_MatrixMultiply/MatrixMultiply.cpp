@@ -218,9 +218,10 @@ int main() {
     hipMalloc((void**)&gpuMatrix2, NUM * sizeof(float));
     hipMalloc((void**)&gpuMultiplyMatrix, NUM * sizeof(float));
 
-    hipEventRecord(start1, NULL);
     // Memory transfer from host to device
     hipMemcpy(gpuMatrix1, Matrix1, NUM * sizeof(float), hipMemcpyHostToDevice);
+
+    hipEventRecord(start1, NULL);
     hipMemcpy(gpuMatrix2, Matrix2, NUM * sizeof(float), hipMemcpyHostToDevice);
     hipEventRecord(stop1, NULL);
 
