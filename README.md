@@ -121,6 +121,9 @@ Link:
 
     <llvm_destination_dir>/bin/clang++ -o example example.o -L<hipcl_install_dir>/lib -lhipcl -pthread -lOpenCL
 
+To see what compilation commands are actually run, and get the intermediate files (including the SPIR-V), add ``-v --save-temps=cwd`` to the CXX_FLAGS.
+Intermediate files will be saved into the current working directory. The SPIR-V that ends up embedded in the ELF binary is in a file named "a.out-hip-spir64-unknown-unknown-sm_20".
+
 ## Known Issues ##
 --------------------
 
