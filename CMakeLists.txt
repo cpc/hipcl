@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
 
+add_compile_options(-Wno-unused-parameter)
 
 if(UNIX AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   message(STATUS "Using Clang: ${CMAKE_CXX_COMPILER}")

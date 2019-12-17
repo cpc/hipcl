@@ -36,6 +36,10 @@ static ClContext *getTlsDefaultCtx() {
       return err;                                                              \
   } while (0)
 
+#define ERROR_CHECK_DEVNUM(device)                                             \
+  ERROR_IF(((device < 0) || ((size_t)device >= NumDevices)),                   \
+           hipErrorInvalidDevice)
+
 /***********************************************************************/
 
 hipError_t hipGetDevice(int *deviceId) {
@@ -60,7 +64,7 @@ hipError_t hipGetDeviceCount(int *count) {
 hipError_t hipSetDevice(int deviceId) {
   InitializeOpenCL();
 
-  ERROR_IF(((deviceId < 0) || (deviceId >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
   tls_defaultCtx = CLDeviceById(deviceId).getPrimaryCtx();
 
@@ -85,7 +89,8 @@ hipError_t hipDeviceReset(void) {
 hipError_t hipDeviceGet(hipDevice_t *device, int ordinal) {
   InitializeOpenCL();
 
-  ERROR_IF(((ordinal < 0) || (ordinal >= NumDevices)), hipErrorInvalidValue);
+  ERROR_IF(((ordinal < 0) || ((size_t)ordinal >= NumDevices)),
+           hipErrorInvalidValue);
 
   ERROR_IF((device == nullptr), hipErrorInvalidDevice);
 
@@ -94,12 +99,12 @@ hipError_t hipDeviceGet(hipDevice_t *device, int ordinal) {
 }
 
 hipError_t hipDeviceComputeCapability(int *major, int *minor,
-                                      hipDevice_t device) {
+                                      hipDevice_t deviceId) {
   InitializeOpenCL();
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
   hipDeviceProp_t props;
-  CLDeviceById(device).copyProperties(&props);
+  CLDeviceById(deviceId).copyProperties(&props);
   if (major)
     *major = props.major;
   if (minor)
@@ -111,7 +116,7 @@ hipError_t hipDeviceComputeCapability(int *major, int *minor,
 hipError_t hipDeviceGetAttribute(int *pi, hipDeviceAttribute_t attr,
                                  int deviceId) {
   InitializeOpenCL();
-  ERROR_IF(((deviceId < 0) || (deviceId >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
   if (CLDeviceById(deviceId).getAttr(pi, attr))
     RETURN(hipErrorInvalidValue);
@@ -121,7 +126,7 @@ hipError_t hipDeviceGetAttribute(int *pi, hipDeviceAttribute_t attr,
 
 hipError_t hipGetDeviceProperties(hipDeviceProp_t *prop, int deviceId) {
   InitializeOpenCL();
-  ERROR_IF(((deviceId < 0) || (deviceId >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
   CLDeviceById(deviceId).copyProperties(prop);
 
@@ -134,24 +139,24 @@ hipError_t hipDeviceGetLimit(size_t *pValue, enum hipLimit_t limit) {
   RETURN(hipErrorUnsupportedLimit);
 }
 
-hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
+hipError_t hipDeviceGetName(char *name, int len, hipDevice_t deviceId) {
   InitializeOpenCL();
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
-  size_t namelen = strlen(CLDeviceById(device).getName()) + 1;
-  if (namelen <= len)
-    memcpy(name, CLDeviceById(device).getName(), namelen);
+  size_t namelen = strlen(CLDeviceById(deviceId).getName()) + 1;
+  if (namelen <= (size_t)len)
+    memcpy(name, CLDeviceById(deviceId).getName(), namelen);
   else if (name && (len > 0))
     name[0] = 0;
   RETURN(hipSuccess);
 }
 
-hipError_t hipDeviceTotalMem(size_t *bytes, hipDevice_t device) {
+hipError_t hipDeviceTotalMem(size_t *bytes, hipDevice_t deviceId) {
   InitializeOpenCL();
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(deviceId);
 
   if (bytes)
-    *bytes = CLDeviceById(device).getGlobalMemSize();
+    *bytes = CLDeviceById(deviceId).getGlobalMemSize();
   RETURN(hipSuccess);
 }
 
@@ -202,7 +207,7 @@ hipError_t hipChooseDevice(int *device, const hipDeviceProp_t *prop) {
   int matchedPropCount = 0;
 
   *device = 0;
-  for (int i = 0; i < NumDevices; i++) {
+  for (size_t i = 0; i < NumDevices; i++) {
     CLDeviceById(i).copyProperties(&tempProp);
     if (prop->major != 0) {
       inPropCount++;
@@ -525,7 +530,7 @@ hipError_t hipStreamAddCallback(hipStream_t stream,
 DEPRECATED(DEPRECATED_MSG)
 hipError_t hipCtxCreate(hipCtx_t *ctx, unsigned int flags, hipDevice_t device) {
 
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+  ERROR_CHECK_DEVNUM(device);
 
   ClContext *cont = CLDeviceById(device).newContext(flags);
   // ClContext *cont = new ClContext(device);
@@ -693,14 +698,14 @@ hipError_t hipMemGetAddressRange(hipDeviceptr_t *pbase, size_t *psize,
     RETURN(hipErrorInvalidValue);
 }
 
-hipError_t hipDevicePrimaryCtxGetState(hipDevice_t device, unsigned int *flags,
-                                       int *active) {
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+hipError_t hipDevicePrimaryCtxGetState(hipDevice_t deviceId,
+                                       unsigned int *flags, int *active) {
+  ERROR_CHECK_DEVNUM(deviceId);
 
   ERROR_IF((flags == nullptr || active == nullptr), hipErrorInvalidValue);
 
   ClContext *currentCtx = getTlsDefaultCtx();
-  ClContext *primaryCtx = CLDeviceById(device).getPrimaryCtx();
+  ClContext *primaryCtx = CLDeviceById(deviceId).getPrimaryCtx();
 
   *active = (primaryCtx == currentCtx) ? 1 : 0;
   *flags = primaryCtx->getFlags();
@@ -708,26 +713,27 @@ hipError_t hipDevicePrimaryCtxGetState(hipDevice_t device, unsigned int *flags,
   RETURN(hipSuccess);
 }
 
-hipError_t hipDevicePrimaryCtxRelease(hipDevice_t device) {
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+hipError_t hipDevicePrimaryCtxRelease(hipDevice_t deviceId) {
+  ERROR_CHECK_DEVNUM(deviceId);
   RETURN(hipSuccess);
 }
 
-hipError_t hipDevicePrimaryCtxRetain(hipCtx_t *pctx, hipDevice_t device) {
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+hipError_t hipDevicePrimaryCtxRetain(hipCtx_t *pctx, hipDevice_t deviceId) {
+  ERROR_CHECK_DEVNUM(deviceId);
   RETURN(hipSuccess);
 }
 
-hipError_t hipDevicePrimaryCtxReset(hipDevice_t device) {
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+hipError_t hipDevicePrimaryCtxReset(hipDevice_t deviceId) {
+  ERROR_CHECK_DEVNUM(deviceId);
 
-  CLDeviceById(device).getPrimaryCtx()->reset();
+  CLDeviceById(deviceId).getPrimaryCtx()->reset();
 
   RETURN(hipSuccess);
 }
 
-hipError_t hipDevicePrimaryCtxSetFlags(hipDevice_t device, unsigned int flags) {
-  ERROR_IF(((device < 0) || (device >= NumDevices)), hipErrorInvalidDevice);
+hipError_t hipDevicePrimaryCtxSetFlags(hipDevice_t deviceId,
+                                       unsigned int flags) {
+  ERROR_CHECK_DEVNUM(deviceId);
 
   RETURN(hipErrorContextAlreadyInUse);
 }
@@ -947,7 +953,6 @@ hipError_t hipArrayCreate(hipArray **array,
   array[0]->textureType = hipTextureType2D;
   void **ptr = &array[0]->data;
 
-  const unsigned am_flags = 0;
   size_t size = pAllocateArray->width;
   if (pAllocateArray->height > 0) {
     size = size * pAllocateArray->height;
@@ -1291,7 +1296,7 @@ hipError_t hipMemcpy2DToArray(hipArray *dst, size_t wOffset, size_t hOffset,
   size_t src_w = spitch;
   size_t dst_w = (dst->width) * byteSize;
 
-  for (int i = 0; i < height; ++i) {
+  for (size_t i = 0; i < height; ++i) {
     void *dst_p = ((unsigned char *)dst->data + i * dst_w);
     void *src_p = ((unsigned char *)src + i * src_w);
 
@@ -1427,8 +1432,8 @@ hipError_t hipMemcpy3D(const struct hipMemcpy3DParms *p) {
     ClContext *cont = getTlsDefaultCtx();
     ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
 
-    for (int i = 0; i < depth; i++) {
-      for (int j = 0; j < height; j++) {
+    for (size_t i = 0; i < depth; i++) {
+      for (size_t j = 0; j < height; j++) {
 
         unsigned char *src =
             (unsigned char *)srcPtr + i * ySize * srcPitch + j * srcPitch;
