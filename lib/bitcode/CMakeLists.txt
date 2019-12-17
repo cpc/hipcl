@@ -1,30 +1,26 @@
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/BC")
 
-# mathlib.bc is currently not compiled, for details see mathlib.cl
-#
+add_custom_command( OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
+                    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.cl"
+        COMMAND "${CMAKE_C_COMPILER}"
+        -Xclang -finclude-default-header
+        -O2 -x cl -cl-std=CL2.0
+        --target=spir64-unknown-unknown -emit-llvm
+        -o "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
+        -c "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.cl"
+        COMMENT "Building mathlib.bc"
+        VERBATIM)
+set(DEPEND_LIST "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc")
 
 #add_custom_command( OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
-#                    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.cl"
-#        COMMAND "${CMAKE_C_COMPILER}"
-#        -Xclang -finclude-default-header
-#        -O2 -pthread -x cl -cl-std=CL2.0
-#        --target=spir64-unknown-unknown -emit-llvm
-#        -o "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
-#        -c "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.cl"
-#        COMMENT "Building mathlib.bc"
-#        VERBATIM)
+#                    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.bc"
+#                    COMMAND "${CMAKE_COMMAND}" -E copy
+#                    "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.bc"
+#                    "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
+#                    COMMENT "Copying mathlib.bc"
+#                    VERBATIM)
 #set(DEPEND_LIST "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc")
-
-add_custom_command( OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
-                    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.bc"
-                    COMMAND "${CMAKE_COMMAND}" -E copy
-                    "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.bc"
-                    "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
-                    COMMENT "Copying mathlib.bc"
-                    VERBATIM)
-
-set(DEPEND_LIST "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc")
 
 # kernellib sources
 
