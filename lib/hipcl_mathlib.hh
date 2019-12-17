@@ -14,6 +14,8 @@
 
 #define OVLD __attribute__((overloadable)) __device__
 
+#define NON_OVLD __device__
+
 #define EXPORT static inline __device__
 
 #define GEN_NAME(N) opencl_##N
@@ -158,10 +160,10 @@ DEFOPENCL2F(fmax)
 DEFOPENCL2F(fmin)
 DEFOPENCL2F(fmod)
 
-float OVLD GEN_NAME(frexp)(float f, int *i);
-double OVLD GEN_NAME(frexp)(double f, int *i);
-EXPORT float frexpf(float f, int *i) { return GEN_NAME(frexp)(f, i); }
-EXPORT double frexp(double f, int *i) { return GEN_NAME(frexp)(f, i); }
+NON_OVLD float GEN_NAME(frexp_f)(float f, int *i);
+NON_OVLD double GEN_NAME(frexp_d)(double f, int *i);
+EXPORT float frexpf(float f, int *i) { return GEN_NAME(frexp_f)(f, i); }
+EXPORT double frexp(double f, int *i) { return GEN_NAME(frexp_d)(f, i); }
 
 DEFOPENCL2F(hypot)
 DEFOPENCL1INT(ilogb)
@@ -230,10 +232,10 @@ DEFOPENCL1F(log2)
 DEFOPENCL1F(logb)
 DEFOPENCL1F(log)
 
-float OVLD GEN_NAME(modf)(float f, float *i);
-double OVLD GEN_NAME(modf)(double f, double *i);
-EXPORT float modff(float f, float *i) { return GEN_NAME(modf)(f, i); }
-EXPORT double modf(double f, double *i) { return GEN_NAME(modf)(f, i); }
+NON_OVLD float GEN_NAME(modf_f)(float f, float *i);
+NON_OVLD double GEN_NAME(modf_d)(double f, double *i);
+EXPORT float modff(float f, float *i) { return GEN_NAME(modf_f)(f, i); }
+EXPORT double modf(double f, double *i) { return GEN_NAME(modf_d)(f, i); }
 
 DEFOPENCL1F(nearbyint)
 DEFOPENCL2F(nextafter)
@@ -247,13 +249,13 @@ DEFOPENCL2F(pow)
 DEFOPENCL2F(remainder)
 DEFOPENCL1F(rcbrt)
 
-float OVLD GEN_NAME(remquo)(float x, float y, int *quo);
-double OVLD GEN_NAME(remquo)(double x, double y, int *quo);
+NON_OVLD float GEN_NAME(remquo_f)(float x, float y, int *quo);
+NON_OVLD double GEN_NAME(remquo_d)(double x, double y, int *quo);
 EXPORT float remquof(float x, float y, int *quo) {
-  return GEN_NAME(remquo)(x, y, quo);
+  return GEN_NAME(remquo_f)(x, y, quo);
 }
 EXPORT double remquo(double x, double y, int *quo) {
-  return GEN_NAME(remquo)(x, y, quo);
+  return GEN_NAME(remquo_d)(x, y, quo);
 }
 
 DEFOPENCL2F(rhypot)
@@ -342,18 +344,18 @@ double rnorm(int dim,
 }
 
 // sincos
-float OVLD GEN_NAME(sincos)(float x, float *cos);
-double OVLD GEN_NAME(sincos)(double x, double *cos);
+NON_OVLD float GEN_NAME(sincos_f)(float x, float *cos);
+NON_OVLD double GEN_NAME(sincos_d)(double x, double *cos);
 EXPORT
 void sincosf(float x, float *sptr, float *cptr) {
   float tmp;
-  *sptr = GEN_NAME(sincos)(x, &tmp);
+  *sptr = GEN_NAME(sincos_f)(x, &tmp);
   *cptr = tmp;
 }
 EXPORT
 void sincos(double x, double *sptr, double *cptr) {
   double tmp;
-  *sptr = GEN_NAME(sincos)(x, &tmp);
+  *sptr = GEN_NAME(sincos_d)(x, &tmp);
   *cptr = tmp;
 }
 
@@ -450,10 +452,9 @@ EXPORT void __sincosf(float x, float *sptr, float *cptr) {
 
 /**********************************************************************/
 
-void OVLD GEN_NAME(local_barrier)();
+OVLD void GEN_NAME(local_barrier)();
 
-EXPORT
-void __syncthreads() { GEN_NAME(local_barrier)(); }
+EXPORT void __syncthreads() { GEN_NAME(local_barrier)(); }
 
 /**********************************************************************/
 
@@ -611,3 +612,93 @@ EXPORT double max(double x, double y) { return fmax(x, y); }
 EXPORT float min(float x, float y) { return fminf(x, y); }
 
 EXPORT double min(double x, double y) { return fmin(x, y); }
+
+/**********************************************************************/
+
+
+#define DEFOPENCL_ATOMIC2(HIPNAME, CLNAME)                                                                                                        \
+  NON_OVLD int GEN_NAME(atomic_##CLNAME##_i)(volatile int* address, int i);                                                                      \
+  NON_OVLD unsigned int GEN_NAME(atomic_##CLNAME##_u)(volatile unsigned int* address, unsigned int ui);                                           \
+  NON_OVLD unsigned long long GEN_NAME(atomic_##CLNAME##_l)(volatile unsigned long long* address, unsigned long long ull);                         \
+  EXPORT OVLD int atomic##HIPNAME(volatile int* address, int val) { return GEN_NAME(atomic_##CLNAME##_i)(address, val); }                           \
+  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int* address,unsigned int val) { return GEN_NAME(atomic_##CLNAME##_u)(address, val); }  \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(volatile unsigned long long* address,unsigned long long val) { return GEN_NAME(atomic_##CLNAME##_l)(address, val); }
+
+DEFOPENCL_ATOMIC2(Add, add);
+DEFOPENCL_ATOMIC2(Sub, sub);
+DEFOPENCL_ATOMIC2(Exch, xchg);
+DEFOPENCL_ATOMIC2(Min, min);
+DEFOPENCL_ATOMIC2(Max, max);
+DEFOPENCL_ATOMIC2(And, and);
+DEFOPENCL_ATOMIC2(Or, or);
+DEFOPENCL_ATOMIC2(Xor, xor);
+
+#define DEFOPENCL_ATOMIC1(HIPNAME, CLNAME)                                                                                       \
+  NON_OVLD int GEN_NAME(atomic_##CLNAME##_i)(volatile int* address);                                                             \
+  NON_OVLD unsigned int GEN_NAME(atomic_##CLNAME##_u)(volatile unsigned int* address);                                           \
+  NON_OVLD unsigned long long GEN_NAME(atomic_##CLNAME##_l)(volatile unsigned long long* address);                               \
+  EXPORT OVLD int atomic##HIPNAME(volatile int* address) { return GEN_NAME(atomic_##CLNAME##_i)(address); }                      \
+  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int* address) { return GEN_NAME(atomic_##CLNAME##_u)(address); }     \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(volatile unsigned long long* address) { return GEN_NAME(atomic_##CLNAME##_l)(address); }
+
+DEFOPENCL_ATOMIC1(Inc, inc);
+DEFOPENCL_ATOMIC1(Dec, dec);
+
+#define DEFOPENCL_ATOMIC3(HIPNAME, CLNAME)                                                                                                        \
+  NON_OVLD int GEN_NAME(atomic_##CLNAME##_i)(volatile int* address, int cmp, int val);                                                                      \
+  NON_OVLD unsigned int GEN_NAME(atomic_##CLNAME##_u)(volatile unsigned int* address, unsigned int cmp, unsigned int val);                                           \
+  NON_OVLD unsigned long long GEN_NAME(atomic_##CLNAME##_l)(volatile unsigned long long* address, unsigned long long cmp, unsigned long long val);                         \
+  EXPORT OVLD int atomic##HIPNAME(volatile int* address, int cmp, int val) { return GEN_NAME(atomic_##CLNAME##_i)(address, cmp, val); }                           \
+  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int* address, unsigned int cmp, unsigned int val) { return GEN_NAME(atomic_##CLNAME##_u)(address, cmp, val); }  \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(volatile unsigned long long* address, unsigned long long cmp, unsigned long long val) { return GEN_NAME(atomic_##CLNAME##_l)(address, cmp, val); }
+
+DEFOPENCL_ATOMIC3(CAS, cmpxchg)
+
+NON_OVLD float GEN_NAME(atomic_add_f)(volatile float* address, float val);                                                             \
+NON_OVLD double GEN_NAME(atomic_add_d)(volatile double* address, double val);                                           \
+NON_OVLD float GEN_NAME(atomic_exch_f)(volatile float* address, float val);                               \
+
+EXPORT float atomicAdd(float* address, float val) { return GEN_NAME(atomic_add_f)(address, val); }
+EXPORT double atomicAdd(double* address, double val) { return GEN_NAME(atomic_add_d)(address, val); }
+EXPORT float atomicExch(float* address, float val) { return GEN_NAME(atomic_exch_f)(address, val); }
+
+
+
+
+
+/**********************************************************************/
+
+/*
+#define DEFOPENCL_SHFL(NAME)                                         \
+  int GEN_NAME(shfl##NAME##_i)(int var, int srcLane, int width);                \
+  float GEN_NAME(shfl##NAME##_f)(float var, int srcLane, int width);            \
+  EXPORT OVLD int__shfl##NAME (int var,   int srcLane, int width=warpSize) { return GEN_NAME(shfl##NAME##_i)(var, srcLane, width); }; \
+  EXPORT OVLD float__shfl##NAME (float var, int srcLane, int width=warpSize) { return GEN_NAME(shfl##NAME##_f)(var, srcLane, width); }; \
+*/
+
+NON_OVLD int GEN_NAME(shfl_i)(int var, int srcLane);
+NON_OVLD float GEN_NAME(shfl_f)(float var, int srcLane);
+EXPORT OVLD int __shfl (int var,   int srcLane) { return GEN_NAME(shfl_i)(var, srcLane); };
+EXPORT OVLD float __shfl (float var, int srcLane) { return GEN_NAME(shfl_f)(var, srcLane); };
+
+NON_OVLD int GEN_NAME(shfl_xor_i)(int var, int laneMask);
+NON_OVLD float GEN_NAME(shfl_xor_f)(float var, int laneMask);
+EXPORT OVLD int __shfl_xor (int var,   int laneMask) { return GEN_NAME(shfl_xor_i)(var, laneMask); };
+EXPORT OVLD float __shfl_xor (float var, int laneMask) { return GEN_NAME(shfl_xor_f)(var, laneMask); };
+
+NON_OVLD int GEN_NAME(shfl_up_i)(int var, unsigned int delta);
+NON_OVLD float GEN_NAME(shfl_up_f)(float var, unsigned int delta);
+EXPORT OVLD int __shfl_up (int var,   unsigned int delta) { return GEN_NAME(shfl_up_i)(var, delta); };
+EXPORT OVLD float __shfl_up (float var, unsigned int delta) { return GEN_NAME(shfl_up_f)(var, delta); };
+
+NON_OVLD int GEN_NAME(shfl_down_i)(int var, unsigned int delta);
+NON_OVLD float GEN_NAME(shfl_down_f)(float var, unsigned int delta);
+EXPORT OVLD int __shfl_down (int var,   unsigned int delta) { return GEN_NAME(shfl_down_i)(var, delta); };
+EXPORT OVLD float __shfl_down (float var, unsigned int delta) { return GEN_NAME(shfl_down_f)(var, delta); };
+
+NON_OVLD int GEN_NAME(group_all)(int pred);
+NON_OVLD int GEN_NAME(group_any)(int pred);
+EXPORT int __all(int predicate) { return GEN_NAME(group_all)(predicate); };
+EXPORT int __any(int predicate) { return GEN_NAME(group_any)(predicate); };
+
+
