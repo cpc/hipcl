@@ -253,7 +253,7 @@ public:
       return false;
     ++p;
 
-    if (*p != spv::Version)
+    if ((*p != spv::Version10) && (*p != spv::Version11))
       return false;
     ++p;
 
