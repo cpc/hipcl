@@ -12,4 +12,4 @@ set_target_properties("vadd_hip" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 
 install(TARGETS "vadd_hip"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")

@@ -13,7 +13,7 @@ set_target_properties("MatrixTranspose" PROPERTIES
                       )
 
 install(TARGETS "MatrixTranspose"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
 
 add_test(NAME "matrix_transpose"
          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/MatrixTranspose"

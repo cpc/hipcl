@@ -1,3 +1,16 @@
+
+option(SAVE_TEMPS "Save temporary compilation products" OFF)
+option(VERBOSE "Verbose compilation" OFF)
+
+if(SAVE_TEMPS)
+  add_compile_options("--save-temps")
+endif()
+
+if(VERBOSE)
+  add_compile_options("-v")
+endif()
+
+
 set(SAMPLES
     hipmath
     hiptest

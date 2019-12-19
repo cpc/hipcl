@@ -12,4 +12,4 @@ set_target_properties("bit_extract" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 
 install(TARGETS "bit_extract"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")

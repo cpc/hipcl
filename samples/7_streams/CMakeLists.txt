@@ -12,4 +12,4 @@ target_link_libraries("stream" ${PTHREAD_LIBRARY} "hipcl" ${OpenCL_LIBRARIES})
 set_target_properties("stream" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 install(TARGETS "stream"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")

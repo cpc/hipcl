@@ -1,28 +1,46 @@
 
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-
 cmake_policy(VERSION 3.3)
 
+set(HIPCL_VERSION_MAJOR 0)
+set(HIPCL_VERSION_MINOR 1)
+set(HIPCL_VERSION_PATCH 0)
+set(HIPCL_VERSION_FULL "${HIPCL_VERSION_MAJOR}.${HIPCL_VERSION_MINOR}.${HIPCL_VERSION_PATCH}")
+
 project(HIP_CL
-        VERSION 0.1
+        VERSION "${HIPCL_VERSION_FULL}"
         DESCRIPTION "Hip implementation over OpenCL"
         LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 11 )
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 enable_testing()
 
-add_compile_options(-Wno-unused-parameter)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "/opt/hipcl" CACHE PATH "Install path prefix" FORCE)
+endif()
+
+message(STATUS "HipCL will be installed to: ${CMAKE_INSTALL_PREFIX}")
+
+set(HIPCL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "where libhipcl will be installed")
+set(HIPCL_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "where kernel library bitcode will be installed")
+set(HIPCL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "where kernel hipcl headers will be installed")
+set(HIPCL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "where hipcl_config will be installed")
+set(HIPCL_SAMPLE_BINDIR "${CMAKE_INSTALL_PREFIX}/bin/samples" CACHE PATH "where samples will be installed")
+set(HIPCL_CMAKE_DIR "${HIPCL_LIB_DIR}/hipcl/cmake" CACHE PATH "where cmake files will be installed")
 
 if(UNIX AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
-  message(STATUS "Using Clang: ${CMAKE_CXX_COMPILER}")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0.0)
     message(FATAL_ERROR "This project requires Clang >= 8.0")
   endif()
 else()
   message(FATAL_ERROR "This project must be compiled with Clang")
 endif()
+
+message(STATUS "Using Clang: ${CMAKE_CXX_COMPILER}")
+set(HIPCL_COMPILER "${CMAKE_CXX_COMPILER}")
 
 if(NOT DEFINED LLVM_LINK)
   get_filename_component(CLANG_BIN_PATH "${CMAKE_CXX_COMPILER}" DIRECTORY)
@@ -35,12 +53,16 @@ endif()
 
 message(STATUS "Using llvm-link: ${LLVM_LINK}")
 
-set(FORBIT_IMPLICIT_FUNCTIONS "-Werror=implicit-function-declaration;-Werror=incompatible-pointer-types")
-add_compile_options(${FORBIT_IMPLICIT_FUNCTIONS})
+if(NOT DEFINED LLVM_SPIRV)
+  get_filename_component(CLANG_BIN_PATH "${CMAKE_CXX_COMPILER}" DIRECTORY)
+  if(EXISTS "${CLANG_BIN_PATH}/llvm-spirv")
+    set(LLVM_SPIRV "${CLANG_BIN_PATH}/llvm-spirv" CACHE PATH "llvm-spirv")
+  else()
+    message(FATAL_ERROR "Can't find llvm-spirv at ${CLANG_BIN_PATH}. Please copy llvm-spirv to ${CLANG_BIN_PATH}, Clang expects it there!")
+  endif()
+endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-enable_testing()
+message(STATUS "Using llvm-spirv: ${LLVM_SPIRV}")
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   set(DEFAULT_BUILD_TYPE "Debug")
@@ -48,36 +70,54 @@ else()
   set(DEFAULT_BUILD_TYPE "RelWithDebInfo")
 endif()
 
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+  message(STATUS "CMake build type not set, setting to ${DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}")
+endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-
 set(PTHREAD_LIBRARY Threads::Threads)
+
+##########################################
 
 add_subdirectory(lib)
 
-option(SAVE_TEMPS "Save temporary compilation products" OFF)
+##########################################
 
-option(VERBOSE "Verbose compilation" OFF)
+get_target_property(HIPCL_CFLAGS_PRIV "hipcl" COMPILE_OPTIONS)
+message(STATUS "hipcl private compile options: ${HIPCL_CFLAGS_PRIV}")
+get_target_property(HIPCL_CFLAGS_IFC "hipcl" INTERFACE_COMPILE_OPTIONS)
+message(STATUS "hipcl public compile options: ${HIPCL_CFLAGS_IFC}")
 
-if(SAVE_TEMPS)
-  add_compile_options("--save-temps")
-endif()
+string(REPLACE ";" " " HIPCL_CXX_OPTIONS "${HIPCL_CFLAGS_IFC}")
 
-if(VERBOSE)
-  add_compile_options("-v")
-endif()
+# The hipcl "COMPILE_OPTIONS" target properties contain some generator expressions;
+# we have to get rid of those for hipcl_config.h
+# this is the way Boost does it (until there's a better way)
+# https://gitlab.kitware.com/cmake/cmake/issues/17984
+string(REPLACE "$<BUILD_INTERFACE:" "$<0:" HIPCL_CXX_OPTIONS "${HIPCL_CXX_OPTIONS}")
+string(REPLACE "$<INSTALL_INTERFACE:" "$<1:" HIPCL_CXX_OPTIONS "${HIPCL_CXX_OPTIONS}")
+message(STATUS "HIPCL_CXX_OPTIONS: ${HIPCL_CXX_OPTIONS}")
 
-if(DEBUG)
-  add_compile_options("-D_GLIBCXX_DEBUG")
-endif()
+##########################################
 
-add_compile_options("-x" "hip")
-add_compile_options("--target=x86_64-linux-gnu")
+configure_file(
+  "${CMAKE_SOURCE_DIR}/hipcl_config.h.in"
+  "${CMAKE_BINARY_DIR}/hipcl_config.h.gen"
+  @ONLY)
 
-add_compile_options("--hip-device-lib-path=${CMAKE_BINARY_DIR}" "--hip-device-lib=kernellib.bc")
+file(GENERATE
+     OUTPUT "${CMAKE_BINARY_DIR}/hipcl_config.h"
+     INPUT "${CMAKE_BINARY_DIR}/hipcl_config.h.gen")
 
-include_directories("${CMAKE_SOURCE_DIR}/lib")
+install(FILES
+  "${CMAKE_SOURCE_DIR}/cmake/FindHIP.cmake"
+  "${CMAKE_BINARY_DIR}/hipConfigVersion.cmake"
+  "${CMAKE_BINARY_DIR}/hip-config.cmake"
+  DESTINATION "${HIPCL_CMAKE_DIR}")
+
+##########################################
 
 add_subdirectory(samples)

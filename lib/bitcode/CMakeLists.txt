@@ -3,7 +3,7 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/BC")
 
 add_custom_command( OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/BC/mathlib.bc"
                     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/mathlib.cl"
-        COMMAND "${CMAKE_C_COMPILER}"
+        COMMAND "${CMAKE_CXX_COMPILER}"
         -Xclang -finclude-default-header
         -O2 -x cl -cl-std=CL2.0
         --target=spir64-unknown-unknown -emit-llvm
@@ -29,7 +29,7 @@ foreach(SOURCE IN LISTS SOURCES)
   add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/BC/${SOURCE}.bc"
         DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/OCML/${SOURCE}.cl"
-        COMMAND "${CMAKE_C_COMPILER}"
+        COMMAND "${CMAKE_CXX_COMPILER}"
         -Xclang -finclude-default-header
         -O2 -pthread -x cl -cl-std=CL2.0
         --target=spir64-unknown-unknown -emit-llvm
@@ -53,5 +53,5 @@ add_custom_command(
 
 add_custom_target("kernellib_bc" DEPENDS "${CMAKE_BINARY_DIR}/kernellib.bc")
 
-install(FILES "${CMAKE_BINARY_DIR}/kernellib.bc" DESTINATION "share")
+install(FILES "${CMAKE_BINARY_DIR}/kernellib.bc" DESTINATION "${HIPCL_DATA_DIR}")
 

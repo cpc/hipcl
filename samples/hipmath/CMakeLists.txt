@@ -10,7 +10,7 @@ set_target_properties("hipmath" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 
 install(TARGETS "hipmath"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
 
 add_test(NAME "hipmath"
          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/hipmath"

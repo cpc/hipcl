@@ -12,4 +12,4 @@ set_target_properties("unroll" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 
 install(TARGETS "unroll"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")

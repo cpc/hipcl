@@ -13,7 +13,7 @@ set_target_properties("MatrixMultiply" PROPERTIES
                       )
 
 install(TARGETS "MatrixMultiply"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
 
 add_test(NAME "matrix_multiply"
          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/MatrixMultiply"

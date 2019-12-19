@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+set_and_check( HIP_INCLUDE_DIR "@PACKAGE_HIPCL_INC_DIR@" )
+set_and_check( HIP_INCLUDE_DIRS "@PACKAGE_HIPCL_INC_DIR@" )
+set_and_check( HIP_LIB_INSTALL_DIR "@PACKAGE_HIPCL_LIB_DIR@" )
+set_and_check( HIP_BIN_INSTALL_DIR "@PACKAGE_HIPCL_BIN_DIR@" )
+
+set_and_check(HIP_HIPCC_EXECUTABLE "@HIPCL_COMPILER@")
+set_and_check(HIP_HIPCONFIG_EXECUTABLE "${HIP_BIN_INSTALL_DIR}/hipcl_config")
+
+include( "${CMAKE_CURRENT_LIST_DIR}/hip-targets.cmake" )
+
+set( HIP_LIBRARIES hip::hipcl)
+set( HIP_LIBRARY ${HIP_LIBRARIES})
+

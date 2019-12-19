@@ -1,0 +1,12 @@
+#cmakedefine HIPCL_CXX_OPTIONS "@HIPCL_CXX_OPTIONS@"
+
+#cmakedefine CMAKE_INSTALL_PREFIX "@CMAKE_INSTALL_PREFIX@"
+
+#cmakedefine HIPCL_LIB_DIR "@HIPCL_LIB_DIR@"
+#cmakedefine HIPCL_DATA_DIR "@HIPCL_DATA_DIR@"
+#cmakedefine HIPCL_INC_DIR "@HIPCL_INC_DIR@"
+#cmakedefine HIPCL_BIN_DIR "@HIPCL_BIN_DIR@"
+
+#cmakedefine HIPCL_VERSION_FULL "@HIPCL_VERSION_FULL@"
+
+#define HIP_PLATFORM "hipcl"
