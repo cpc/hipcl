@@ -517,30 +517,30 @@ float CL_NAME_MANGLED_ATOM(exch, _f, 20,
 
 int OVLD intel_sub_group_shuffle(int var, uint srcLane);
 float OVLD intel_sub_group_shuffle(float var, uint srcLane);
-int CL_NAME(shfl_i)(int var, int srcLane) {
+OVLD int CL_NAME(shfl_i)(int var, int srcLane) {
   return intel_sub_group_shuffle(var, srcLane);
 };
-float CL_NAME(shfl_f)(float var, int srcLane) {
+OVLD float CL_NAME(shfl_f)(float var, int srcLane) {
   return intel_sub_group_shuffle(var, srcLane);
 };
 
 int OVLD intel_sub_group_shuffle_xor(int var, uint value);
 float OVLD intel_sub_group_shuffle_xor(float var, uint value);
-int CL_NAME(shfl_xor_i)(int var, int value) {
+OVLD int CL_NAME(shfl_xor_i)(int var, int value) {
   return intel_sub_group_shuffle_xor(var, value);
 };
-float CL_NAME(shfl_xor_f)(float var, int value) {
+OVLD float CL_NAME(shfl_xor_f)(float var, int value) {
   return intel_sub_group_shuffle_xor(var, value);
 };
 
 int OVLD intel_sub_group_shuffle_up(int prev, int curr, uint delta);
 float OVLD intel_sub_group_shuffle_up(float prev, float curr, uint delta);
-int CL_NAME(shfl_up_i)(int var, int delta) {
+OVLD int CL_NAME(shfl_up_i)(int var, unsigned int delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
 };
-float CL_NAME(shfl_up_f)(float var, int delta) {
+OVLD float CL_NAME(shfl_up_f)(float var, unsigned int delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
@@ -548,12 +548,12 @@ float CL_NAME(shfl_up_f)(float var, int delta) {
 
 int OVLD intel_sub_group_shuffle_down(int prev, int curr, uint delta);
 float OVLD intel_sub_group_shuffle_down(float prev, float curr, uint delta);
-int CL_NAME(shfl_down_i)(int var, int delta) {
+OVLD int CL_NAME(shfl_down_i)(int var, unsigned int delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
 };
-float CL_NAME(shfl_down_f)(float var, int delta) {
+OVLD float CL_NAME(shfl_down_f)(float var, unsigned int delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
