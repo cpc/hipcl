@@ -84,6 +84,9 @@ set(PTHREAD_LIBRARY Threads::Threads)
 
 add_subdirectory(lib)
 
+# hipcl_config
+add_subdirectory(bin)
+
 ##########################################
 
 get_target_property(HIPCL_CFLAGS_PRIV "hipcl" COMPILE_OPTIONS)
