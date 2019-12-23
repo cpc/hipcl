@@ -60,6 +60,7 @@ install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/hipcl_mathlib.hh"
         "${CMAKE_CURRENT_SOURCE_DIR}/hip_fatbin.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/hip_runtime.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hip_vector_types.h"
   DESTINATION "${HIPCL_INC_DIR}/hip")
 
 include(CMakePackageConfigHelpers)
