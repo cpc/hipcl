@@ -10,6 +10,28 @@ if(VERBOSE)
   add_compile_options("-v")
 endif()
 
+# ARGN = sources
+function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS)
+
+    set(SOURCES ${ARGN})
+    set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
+
+    add_executable("${EXEC_NAME}" ${SOURCES})
+
+    set_target_properties("${EXEC_NAME}" PROPERTIES CXX_STANDARD_REQUIRED ON)
+
+    add_dependencies("${EXEC_NAME}" "kernellib_bc")
+
+    target_link_libraries("${EXEC_NAME}" "hipcl")
+
+    install(TARGETS "${EXEC_NAME}"
+            RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
+
+    add_test(NAME "${TEST_NAME}"
+             COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${EXEC_NAME}"
+             PASS_REGULAR_EXPRESSION "${TEST_PASS}")
+
+endfunction()
 
 set(SAMPLES
     hipmath
