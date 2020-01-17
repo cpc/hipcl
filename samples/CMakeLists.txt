@@ -41,6 +41,7 @@ set(SAMPLES
     0_MatrixTranspose
     0_MatrixMultiply
     1_hipEvent
+    2_vecadd
     3_shared_memory
 #    6_dynamic_shared
 #    7_streams
