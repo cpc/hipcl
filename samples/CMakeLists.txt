@@ -43,6 +43,8 @@ set(SAMPLES
     1_hipEvent
     2_vecadd
     3_shared_memory
+    4_shfl
+    5_2dshfl
 #    6_dynamic_shared
 #    7_streams
 #    9_unroll
