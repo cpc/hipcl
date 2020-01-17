@@ -520,16 +520,33 @@ void ExecItem::setArg(const void *arg, size_t size, size_t offset) {
 
 int ExecItem::setupAllArgs(ClKernel *kernel) {
   OCLFuncInfo *FuncInfo = kernel->getFuncInfo();
-  assert(OffsetsSizes.size() == FuncInfo->ArgTypeInfo.size());
+  if (OffsetsSizes.size() != FuncInfo->ArgTypeInfo.size()) {
+      logError("Some arguments are still unset\n");
+      return CL_INVALID_VALUE;
+  }
+
+  if (OffsetsSizes.size() == 0)
+    return CL_SUCCESS;
 
   std::sort(OffsetsSizes.begin(), OffsetsSizes.end());
-  assert(std::get<0>(OffsetsSizes[0]) == 0);
+  if ((std::get<0>(OffsetsSizes[0]) != 0) ||
+      (std::get<1>(OffsetsSizes[0]) == 0)) {
+          logError("Invalid offset/size\n");
+          return CL_INVALID_VALUE;
+      }
+
   // check args are set
   if (OffsetsSizes.size() > 1) {
     for (size_t i = 1; i < OffsetsSizes.size(); ++i) {
-      if (std::get<0>(OffsetsSizes[i - 1]) + std::get<1>(OffsetsSizes[i - 1]) !=
-          std::get<0>(OffsetsSizes[i]))
-        return CL_INVALID_VALUE;
+      if ( (std::get<0>(OffsetsSizes[i]) == 0) ||
+           (std::get<1>(OffsetsSizes[i]) == 0) ||
+           (
+           (std::get<0>(OffsetsSizes[i - 1]) + std::get<1>(OffsetsSizes[i - 1])) >
+            std::get<0>(OffsetsSizes[i]))
+           ) {
+          logError("Invalid offset/size\n");
+          return CL_INVALID_VALUE;
+        }
     }
   }
 
@@ -549,10 +566,12 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
       if (err != CL_SUCCESS)
         return err;
     } else {
-      logDebug("setArg {}\n", i);
+      size_t size = std::get<1>(OffsetsSizes[i]);
+      size_t offs = std::get<0>(OffsetsSizes[i]);
+      void* value = (void*)(start + offs);
+      logDebug("setArg {} size {} offs {}\n", i, size, offs);
       err =
-          ::clSetKernelArg(kernel->get().get(), i, std::get<1>(OffsetsSizes[i]),
-                           (start + std::get<0>(OffsetsSizes[i])));
+          ::clSetKernelArg(kernel->get().get(), i, size, value);
       logDebug("ERR {}\n", err);
       if (err != CL_SUCCESS)
         return err;
