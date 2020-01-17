@@ -1,24 +1,3 @@
-/*
-Copyright (c) 2019 Michal Babej / Tampere University
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 
 #include <iostream>
 #include <random>
@@ -38,11 +17,33 @@ THE SOFTWARE.
 //#define USE_FMA
 
 // the required shared memory is (2 * 4 * THREADS_PER_BLOCK * THREADS_PER_BLOCK) bytes
-#define THREADS_PER_BLOCK 64
+#define THREADS_PER_BLOCK 16
 
 // configure matrix size here. Must be power of 4 at least 64
 #define WIDTH 1024
 #define NUM (WIDTH * WIDTH)
+
+// how many times to run the matmul kernel
+#define ITERS 30
+
+#define ERR_CHECK_2 \
+  do { \
+  err = hipGetLastError(); \
+    if (err != hipSuccess) { \
+      std::cerr << "HIP API error\n"; \
+      return -1; \
+    } \
+  } while (0)
+
+
+#define ERR_CHECK \
+  do { \
+    if (err != hipSuccess) { \
+      std::cerr << "HIP API error\n"; \
+      return -1; \
+    } \
+  } while (0)
+
 
 /*****************************************************************************/
 
@@ -171,10 +172,14 @@ void matrixMultiplyCPUReference(const float * __restrict A,
     }
 }
 
+/*****************************************************************************/
+
+
 int main() {
 
-  std::mt19937 gen(SEED);
-  auto rnd = std::bind(std::uniform_real_distribution<float>{100.0f, 1000.0f}, gen);
+    hipError_t err;
+    std::mt19937 gen(SEED);
+    auto rnd = std::bind(std::uniform_real_distribution<float>{100.0f, 1000.0f}, gen);
 
     float* Matrix1;
     float* Matrix2;
@@ -186,12 +191,19 @@ int main() {
     float* gpuMultiplyMatrix;
 
     hipDeviceProp_t devProp;
-    hipGetDeviceProperties(&devProp, 0);
+    err = hipGetDeviceProperties(&devProp, 0);
+    ERR_CHECK;
 
     std::cout << "Device name " << devProp.name << std::endl;
 
+    hipEvent_t events[ITERS*2];
+    for (uint w = 0; w < (ITERS*2); w++) {
+      err = hipEventCreate(&events[w]);
+      ERR_CHECK;
+    }
+
     size_t i, j;
-    int errors, err;
+    int errors;
 
     Matrix1 = new float [NUM];
     Matrix2 = new float [NUM];
@@ -204,30 +216,30 @@ int main() {
         Matrix2[i] = rnd();
     }
 
-    hipEvent_t start1, stop1, start2, stop2, start3, stop3;
-    hipEventCreate(&start1);
-    hipEventCreate(&stop1);
-    hipEventCreate(&start2);
-    hipEventCreate(&stop2);
-    hipEventCreate(&start3);
-    hipEventCreate(&stop3);
-    float eventMs = 1.0f;
+    float minMs,tempMs;
 
     // allocate the memory on the device side
-    hipMalloc((void**)&gpuMatrix1, NUM * sizeof(float));
-    hipMalloc((void**)&gpuMatrix2, NUM * sizeof(float));
-    hipMalloc((void**)&gpuMultiplyMatrix, NUM * sizeof(float));
+    err = hipMalloc((void**)&gpuMatrix1, NUM * sizeof(float));
+    ERR_CHECK;
+    err = hipMalloc((void**)&gpuMatrix2, NUM * sizeof(float));
+    ERR_CHECK;
+    err = hipMalloc((void**)&gpuMultiplyMatrix, NUM * sizeof(float));
+    ERR_CHECK;
+
+    auto timeGPU1 = std::chrono::high_resolution_clock::now();
 
     // Memory transfer from host to device
-    hipMemcpy(gpuMatrix1, Matrix1, NUM * sizeof(float), hipMemcpyHostToDevice);
+    err = hipMemcpy(gpuMatrix1, Matrix1, NUM * sizeof(float), hipMemcpyHostToDevice);
+    ERR_CHECK;
 
-    hipEventRecord(start1, NULL);
-    hipMemcpy(gpuMatrix2, Matrix2, NUM * sizeof(float), hipMemcpyHostToDevice);
-    hipEventRecord(stop1, NULL);
+    err = hipMemcpy(gpuMatrix2, Matrix2, NUM * sizeof(float), hipMemcpyHostToDevice);
+    ERR_CHECK;
 
-    hipEventRecord(start2, NULL);
-    // Lauching kernel from host
-    hipLaunchKernelGGL(gpuMatrixMul,
+    for (i = 0; i < ITERS; ++i) {
+      err = hipEventRecord(events[i*2], NULL);
+      ERR_CHECK;
+      // Lauching kernel from host
+      hipLaunchKernelGGL(gpuMatrixMul,
 #ifndef MM_SHARED
                        dim3(WIDTH / THREADS_PER_BLOCK, WIDTH / THREADS_PER_BLOCK),
                        dim3(THREADS_PER_BLOCK, THREADS_PER_BLOCK),
@@ -237,33 +249,46 @@ int main() {
 #endif
                        0, 0,
                        gpuMatrix1, gpuMatrix2, gpuMultiplyMatrix, WIDTH, WIDTH, WIDTH);
-    hipEventRecord(stop2, NULL);
+      ERR_CHECK_2;
+      err = hipEventRecord(events[i*2+1], NULL);
+      ERR_CHECK;
+    }
 
-    hipEventRecord(start3, NULL);
     // Memory transfer from device to host
-    hipMemcpy(MultiplyMatrix, gpuMultiplyMatrix, NUM * sizeof(float), hipMemcpyDeviceToHost);
-    hipEventRecord(stop3, NULL);
+    err = hipMemcpy(MultiplyMatrix, gpuMultiplyMatrix, NUM * sizeof(float), hipMemcpyDeviceToHost);
+    ERR_CHECK;
 
-    hipDeviceSynchronize();
+    err = hipDeviceSynchronize();
+    ERR_CHECK;
 
-    err = hipEventElapsedTime(&eventMs, start1, stop1);
-    assert(err == hipSuccess);
-    printf("hipMemcpyHostToDevice time taken  = %6.3fms\n", eventMs);
+    auto timeGPU2 = std::chrono::high_resolution_clock::now();
 
-    err = hipEventElapsedTime(&eventMs, start2, stop2);
-    assert(err == hipSuccess);
-    printf("hipLaunchKernel time taken  = %6.3fms\n", eventMs);
+    std::cout << "Running " << ITERS << " iterations \n";
 
-    err = hipEventElapsedTime(&eventMs, start3, stop3);
-    assert (err == hipSuccess);
-    printf("hipMemcpyDeviceToHost time taken  = %6.3fms\n", eventMs);
+    minMs = 1e30f;
+    for (i = 0; i < ITERS; ++i) {
+        err = hipEventElapsedTime(&tempMs, events[i*2], events[i*2+1]);
+        ERR_CHECK;
+        std::cout << "hipLaunchKernel " << i << " time taken: " << tempMs << "\n";
+        if (tempMs < minMs) minMs = tempMs;
+    }
+
+    std::cout << "hipLaunchKernel BEST TIME: " << minMs << "\n";
+
+    for (uint w = 0; w < (ITERS*2); w++) {
+      err = hipEventDestroy(events[w]);
+      ERR_CHECK;
+    }
+
+    std::chrono::duration<double, std::milli> gpu_fp_ms = timeGPU2 - timeGPU1;
+    std::cout << "GPU real time taken(ms): " <<  gpu_fp_ms.count() << "\n";
 
     auto time1 = std::chrono::high_resolution_clock::now();
     // CPU MatrixTranspose computation
     matrixMultiplyCPUReference(Matrix1, Matrix2, cpuMultiplyMatrix);
     auto time2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> fp_ms = time2 - time1;
-    printf("matrixMultiplyCPUReference time taken  = %6.3fms\n", fp_ms.count());
+    std::cout << "matrixMultiplyCPUReference time taken(ms): " <<  fp_ms.count() << "\n";
 
     // verify the results
     errors = 0;
@@ -274,7 +299,7 @@ int main() {
           float gpu = MultiplyMatrix[i*WIDTH+j];
           if (std::abs(gpu - cpu) > eps) {
             errors++;
-            std::cerr << "E[" << i << "][" << j << "]: M1 "
+            std::cout << "E[" << i << "][" << j << "]: M1 "
                       << Matrix1[i*WIDTH+j] << " M2 " << Matrix1[i*WIDTH+j]
                       << " CPU: " << cpu << " GPU: "
                       << gpu << " ERROR: " << std::abs(gpu - cpu) << "\n";
@@ -282,22 +307,18 @@ int main() {
         }
     }
     if (errors != 0) {
-        printf("Verification FAILED: %d errors\n", errors);
+        std::cout << "Verification FAILED: " << errors << "  errors\n";
     } else {
-        printf("Verification PASSED!\n");
+        std::cout << "Verification PASSED!\n";
     }
 
-    hipEventDestroy(start1);
-    hipEventDestroy(stop1);
-    hipEventDestroy(start2);
-    hipEventDestroy(stop2);
-    hipEventDestroy(start3);
-    hipEventDestroy(stop3);
-
     // free the resources on device side
-    hipFree(gpuMatrix1);
-    hipFree(gpuMatrix2);
-    hipFree(gpuMultiplyMatrix);
+    err = hipFree(gpuMatrix1);
+    ERR_CHECK;
+    err = hipFree(gpuMatrix2);
+    ERR_CHECK;
+    err = hipFree(gpuMultiplyMatrix);
+    ERR_CHECK;
 
     // free the resources on host side
     delete [] Matrix1;
