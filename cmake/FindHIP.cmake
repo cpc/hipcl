@@ -168,6 +168,6 @@ find_package_handle_standard_args(
     )
 
 
-include(hipcl-targets)
+include(hip-targets)
 
 # vim: ts=4:sw=4:expandtab:smartindent
