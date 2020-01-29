@@ -17,11 +17,11 @@ int main(int argc, char const *argv[]) {
         "C,cpp_config", "print C++ compiler options")(
         "c,compiler", "print compiler")("P,platform", "print platform")(
         "v,version", "print hip version")("f,full", "print full config")(
-        "h,help", "print help message with all options");
+        "h,help", "print help message with all options")(
+        "n,newline", "print a newline character");
 
     //    print "  --full, -f         : print full config\n";
     //    print "  --check            : check configuration\n";
-    //    print "  --newline, -n      : print newline\n";
 
     char **argv_copy = (char **)argv;
     auto result = options.parse(argc, argv_copy);
@@ -33,35 +33,39 @@ int main(int argc, char const *argv[]) {
     const char *hip_platform = HIP_PLATFORM;
     const char *hip_version = HIPCL_VERSION_FULL;
 
+    bool noopt_or_help = false;
     if (result.count("p") > 0) {
       std::cout << hip_path;
-      return 0;
-    }
-    if (result.count("C") > 0) {
+    } else if (result.count("C") > 0) {
       std::cout << hip_cpp_options;
-      return 0;
-    }
-
-    if (result.count("c") > 0) {
+    } else if (result.count("c") > 0) {
       std::cout << hip_platform;
-      return 0;
-    }
-
-    if (result.count("P") > 0) {
+    } else if (result.count("P") > 0) {
       std::cout << hip_platform;
-      return 0;
-    }
-
-    if (result.count("v") > 0) {
+    } else if (result.count("v") > 0) {
       std::cout << hip_version;
-      return 0;
+    } else {
+      noopt_or_help = true;
     }
 
-    std::vector<std::string> groups;
-    groups.push_back("hipcl_options");
-    std::cout << options.help(groups);
+    if (noopt_or_help) {
+      bool asked_for_help = result.count("h") > 0;
 
-    return (result.count("h") > 0) ? 0 : 1;
+      std::vector<std::string> groups;
+      groups.push_back("hipcl_options");
+      std::cout << options.help(groups);
+
+      if (!asked_for_help) {
+        std::cout << "Error: no options given.\n";
+      }
+      return asked_for_help ? 0 : 1;
+    }
+
+    if (result.count("n") > 0) {
+      std::cout << std::endl;
+    }
+    return 0;
+
   } catch (cxxopts::OptionSpecException &e) {
     std::cerr << "Error in specified options: " << e.what() << "\n";
     return 1;
