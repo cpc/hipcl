@@ -1218,6 +1218,14 @@ bool ClDevice::getModuleAndFName(const void *HostFunction,
 
 ClDevice &CLDeviceById(int deviceId) { return *OpenCLDevices.at(deviceId); }
 
+class InvalidDeviceType : public std::invalid_argument {
+  using std::invalid_argument::invalid_argument;
+};
+
+class InvalidPlatformOrDeviceNumber : public std::out_of_range {
+  using std::out_of_range::out_of_range;
+};
+
 static void InitializeOpenCLCallOnce() {
 
   cl_int err = cl::Platform::get(&Platforms);
@@ -1228,17 +1236,82 @@ static void InitializeOpenCLCallOnce() {
   OpenCLDevices.clear();
   NumDevices = 0;
   std::vector<cl::Device> Devices;
+  const char *selected_platform_str = std::getenv("HIPCL_PLATFORM");
+  const char *selected_device_str = std::getenv("HIPCL_DEVICE");
+  const char *selected_device_type_str = std::getenv("HIPCL_DEVICE_TYPE");
+  int selected_platform = -1;
+  int selected_device = -1;
+  cl_bitfield selected_dev_type = 0;
+  try {
+    if (selected_platform_str) {
+      selected_platform = std::stoi(selected_platform_str);
+      if ((selected_platform < 0) || (selected_platform >= Platforms.size()))
+        throw InvalidPlatformOrDeviceNumber(
+            "HIPCL_PLATFORM: platform number out of range");
+    }
 
+    if (selected_device_str) {
+      selected_device = std::stoi(selected_device_str);
+      Devices.clear();
+      if (selected_platform < 0)
+        selected_platform = 0;
+      err =
+          Platforms[selected_platform].getDevices(CL_DEVICE_TYPE_ALL, &Devices);
+      if (err != CL_SUCCESS)
+        throw InvalidPlatformOrDeviceNumber(
+            "HIPCL_DEVICE: can't get devices for platform");
+      if ((selected_device < 0) || (selected_device >= Devices.size()))
+        throw InvalidPlatformOrDeviceNumber(
+            "HIPCL_DEVICE: device number out of range");
+    }
+
+    if (selected_device_type_str) {
+      std::string s(selected_device_type_str);
+      if (s == "all")
+        selected_dev_type = CL_DEVICE_TYPE_ALL;
+      else if (s == "cpu")
+        selected_dev_type = CL_DEVICE_TYPE_CPU;
+      else if (s == "gpu")
+        selected_dev_type = CL_DEVICE_TYPE_GPU;
+      else if (s == "default")
+        selected_dev_type = CL_DEVICE_TYPE_DEFAULT;
+      else if (s == "accel")
+        selected_dev_type = CL_DEVICE_TYPE_ACCELERATOR;
+      else
+        throw InvalidDeviceType(
+            "Unknown value provided for HIPCL_DEVICE_TYPE\n");
+    }
+  } catch (const InvalidDeviceType &e) {
+    logCritical("{}\n", e.what());
+    return;
+  } catch (const InvalidPlatformOrDeviceNumber &e) {
+    logCritical("{}\n", e.what());
+    return;
+  } catch (const std::invalid_argument &e) {
+    logCritical(
+        "Could not convert HIPCL_PLATFORM or HIPCL_DEVICES to a number\n");
+    return;
+  } catch (const std::out_of_range &e) {
+    logCritical("HIPCL_PLATFORM or HIPCL_DEVICES is out of range\n");
+    return;
+  }
+
+  if (selected_dev_type == 0)
+    selected_dev_type = CL_DEVICE_TYPE_ALL;
   for (auto Platform : Platforms) {
     Devices.clear();
-    err = Platform.getDevices(CL_DEVICE_TYPE_ALL, &Devices);
+    err = Platform.getDevices(selected_dev_type, &Devices);
     if (err != CL_SUCCESS)
       continue;
     if (Devices.size() == 0)
       continue;
+    if (selected_platform >= 0 && (Platforms[selected_platform] != Platform))
+      continue;
 
     for (cl::Device &Dev : Devices) {
       ver.clear();
+      if (selected_device >= 0 && (Devices[selected_device] != Dev))
+        continue;
       ver = Dev.getInfo<CL_DEVICE_IL_VERSION>(&err);
       if ((err == CL_SUCCESS) && (ver.rfind("SPIR-V_1.", 0) == 0)) {
         ClDevice *temp = new ClDevice(Dev, Platform, NumDevices);
