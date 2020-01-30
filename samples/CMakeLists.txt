@@ -11,12 +11,12 @@ if(VERBOSE)
 endif()
 
 # ARGN = sources
-function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS)
+function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS SOURCE)
 
-    set(SOURCES ${ARGN})
-    set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
+    set(TEST_EXEC_ARGS ${ARGN})
+    set_source_files_properties(${SOURCE} PROPERTIES LANGUAGE CXX)
 
-    add_executable("${EXEC_NAME}" ${SOURCES})
+    add_executable("${EXEC_NAME}" ${SOURCE})
 
     set_target_properties("${EXEC_NAME}" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
@@ -28,8 +28,12 @@ function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS)
             RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
 
     add_test(NAME "${TEST_NAME}"
-             COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${EXEC_NAME}"
+             COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${EXEC_NAME}" ${TEST_EXEC_ARGS}
+             )
+
+    set_tests_properties("${TEST_NAME}" PROPERTIES
              PASS_REGULAR_EXPRESSION "${TEST_PASS}")
+
 
 endfunction()
 
@@ -53,3 +57,5 @@ set(SAMPLES
 foreach (SAMPLE ${SAMPLES})
   add_subdirectory(${SAMPLE})
 endforeach()
+
+add_subdirectory(hip-cuda)
