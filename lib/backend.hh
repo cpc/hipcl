@@ -149,8 +149,8 @@ public:
   cl::Kernel get() const { return Kernel; }
   OCLFuncInfo *getFuncInfo() const { return FuncInfo; }
 
-  int setAllArgs(void **args);
-  int setAllArgs(void *args, size_t size);
+  int setAllArgs(void **args, size_t shared);
+  int setAllArgs(void *args, size_t size, size_t shared);
   size_t getTotalArgSize() const { return TotalArgSize; }
 
 };

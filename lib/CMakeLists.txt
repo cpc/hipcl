@@ -36,6 +36,11 @@ target_compile_options(hipcl INTERFACE
         "$<BUILD_INTERFACE:--hip-device-lib-path=${CMAKE_BINARY_DIR}>"
         "--hip-device-lib=kernellib.bc")
 
+# for LLVM passes
+target_compile_options(hipcl INTERFACE
+        "$<INSTALL_INTERFACE:--hip-llvm-pass-path=${HIPCL_LLVM_DIR}>"
+        "$<BUILD_INTERFACE:--hip-llvm-pass-path=${CMAKE_BINARY_DIR}/llvm_passes>")
+
 target_include_directories(hipcl
     PUBLIC
         "$<INSTALL_INTERFACE:${HIPCL_INC_DIR}>"

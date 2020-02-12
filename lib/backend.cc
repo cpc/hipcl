@@ -112,7 +112,7 @@ bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
   return true;
 }
 
-int ClKernel::setAllArgs(void **args) {
+int ClKernel::setAllArgs(void **args, size_t shared) {
   void *p;
   int err;
 
@@ -136,10 +136,19 @@ int ClKernel::setAllArgs(void **args) {
         return err;
     }
   }
+
+  if (shared > 0) {
+    err = ::clSetKernelArg(Kernel(),
+                           FuncInfo->ArgTypeInfo.size()-1,
+                           shared, nullptr);
+    if (err != CL_SUCCESS)
+      return err;
+  }
+
   return 0;
 }
 
-int ClKernel::setAllArgs(void *args, size_t size) {
+int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
   void *p = args;
   int err;
 
@@ -166,6 +175,15 @@ int ClKernel::setAllArgs(void *args, size_t size) {
 
     p = (char *)p + ai.size;
   }
+
+  if (shared > 0) {
+    err = ::clSetKernelArg(Kernel(),
+                           FuncInfo->ArgTypeInfo.size()-1,
+                           shared, nullptr);
+    if (err != CL_SUCCESS)
+      return err;
+  }
+
   return 0;
 }
 
@@ -520,7 +538,15 @@ void ExecItem::setArg(const void *arg, size_t size, size_t offset) {
 
 int ExecItem::setupAllArgs(ClKernel *kernel) {
   OCLFuncInfo *FuncInfo = kernel->getFuncInfo();
-  if (OffsetsSizes.size() != FuncInfo->ArgTypeInfo.size()) {
+  size_t NumLocals = 0;
+  for (size_t i = 0; i < FuncInfo->ArgTypeInfo.size(); ++i) {
+    if (FuncInfo->ArgTypeInfo[i].space == OCLSpace::Local)
+      ++NumLocals;
+  }
+  // there can only be one dynamic shared mem variable, per cuda spec
+  assert (NumLocals <= 1);
+
+  if ((OffsetsSizes.size()+NumLocals) != FuncInfo->ArgTypeInfo.size()) {
       logError("Some arguments are still unset\n");
       return CL_INVALID_VALUE;
   }
@@ -577,6 +603,14 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
         return err;
     }
   }
+
+  if (SharedMem > 0) {
+    ::clSetKernelArg(kernel->get().get(),
+                     (FuncInfo->ArgTypeInfo.size()-1),
+                     this->SharedMem, nullptr);
+  }
+
+
   return CL_SUCCESS;
 }
 
@@ -885,7 +919,7 @@ hipError_t ClContext::launchWithKernelParams(dim3 grid, dim3 block,
   if (!kernel->isFromContext(Context))
     return hipErrorLaunchFailure;
 
-  int err = kernel->setAllArgs(kernelParams);
+  int err = kernel->setAllArgs(kernelParams, shared);
   if (err != CL_SUCCESS)
     return hipErrorLaunchFailure;
 
@@ -931,7 +965,7 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
     return hipErrorLaunchFailure;
   }
 
-  int err = kernel->setAllArgs(args, size);
+  int err = kernel->setAllArgs(args, size, shared);
   if (err != CL_SUCCESS)
     return hipErrorLaunchFailure;
 
