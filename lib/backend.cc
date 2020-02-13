@@ -141,8 +141,10 @@ int ClKernel::setAllArgs(void **args, size_t shared) {
     err = ::clSetKernelArg(Kernel(),
                            FuncInfo->ArgTypeInfo.size()-1,
                            shared, nullptr);
-    if (err != CL_SUCCESS)
+    if (err != CL_SUCCESS) {
+      logError ("Failed to set dynamic local size!\n");
       return err;
+    }
   }
 
   return 0;
@@ -180,8 +182,10 @@ int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
     err = ::clSetKernelArg(Kernel(),
                            FuncInfo->ArgTypeInfo.size()-1,
                            shared, nullptr);
-    if (err != CL_SUCCESS)
+    if (err != CL_SUCCESS) {
+      logError ("Failed to set dynamic local size!\n");
       return err;
+    }
   }
 
   return 0;
@@ -464,8 +468,10 @@ bool ClQueue::recordEvent(hipEvent_t event) {
 hipError_t ClQueue::launch(ClKernel *Kernel, ExecItem *Arguments) {
   std::lock_guard<std::mutex> Lock(QueueMutex);
 
-  if (Arguments->setupAllArgs(Kernel) != CL_SUCCESS)
+  if (Arguments->setupAllArgs(Kernel) != CL_SUCCESS) {
+    logError("Failed to set kernel arguments for launch! \n");
     return hipErrorLaunchFailure;
+  }
 
   dim3 GridDim = Arguments->GridDim;
   dim3 BlockDim = Arguments->BlockDim;
@@ -605,9 +611,13 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
   }
 
   if (SharedMem > 0) {
-    ::clSetKernelArg(kernel->get().get(),
+    err = ::clSetKernelArg(kernel->get().get(),
                      (FuncInfo->ArgTypeInfo.size()-1),
                      this->SharedMem, nullptr);
+    if (err != CL_SUCCESS) {
+      logError ("Failed to set dynamic local size!\n");
+      return err;
+    }
   }
 
 
@@ -920,8 +930,10 @@ hipError_t ClContext::launchWithKernelParams(dim3 grid, dim3 block,
     return hipErrorLaunchFailure;
 
   int err = kernel->setAllArgs(kernelParams, shared);
-  if (err != CL_SUCCESS)
+  if (err != CL_SUCCESS) {
+    logError("Failed to set kernel arguments for launch! \n");
     return hipErrorLaunchFailure;
+  }
 
   return stream->launch3(kernel, grid, block);
 }
@@ -966,9 +978,10 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
   }
 
   int err = kernel->setAllArgs(args, size, shared);
-  if (err != CL_SUCCESS)
+  if (err != CL_SUCCESS) {
+    logError("Failed to set kernel arguments for launch! \n");
     return hipErrorLaunchFailure;
-
+  }
   return stream->launch3(kernel, grid, block);
 }
 
