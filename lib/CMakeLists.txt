@@ -44,10 +44,10 @@ target_compile_options(hipcl INTERFACE
 target_include_directories(hipcl
     PUBLIC
         "$<INSTALL_INTERFACE:${HIPCL_INC_DIR}>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
     PRIVATE
         "${CMAKE_SOURCE_DIR}"
-        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/include"
 )
 
 install(TARGETS hipcl
@@ -61,11 +61,11 @@ install(EXPORT "hip-targets"
         DESTINATION "${HIPCL_CMAKE_DIR}")
 
 install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/hipcl.hh"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hipcl_mathlib.hh"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hip_fatbin.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hip_runtime.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hip_vector_types.h"
+        "${CMAKE_SOURCE_DIR}/include/hip/hipcl.hh"
+        "${CMAKE_SOURCE_DIR}/include/hip/hipcl_mathlib.hh"
+        "${CMAKE_SOURCE_DIR}/include/hip/hip_fatbin.h"
+        "${CMAKE_SOURCE_DIR}/include/hip/hip_runtime.h"
+        "${CMAKE_SOURCE_DIR}/include/hip/hip_vector_types.h"
   DESTINATION "${HIPCL_INC_DIR}/hip")
 
 include(CMakePackageConfigHelpers)

@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "hipcl.hh"
-#include "hip_vector_types.h"
+#include "hip/hip_runtime.h"
+
 #include <stdio.h>
 #include <cmath>
 #include <stdlib.h>

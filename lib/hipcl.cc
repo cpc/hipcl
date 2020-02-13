@@ -1586,7 +1586,7 @@ hipError_t hipModuleLaunchKernel(hipFunction_t k, unsigned int gridDimX,
 
 /*******************************************************************************/
 
-#include "hip_fatbin.h"
+#include "hip/hip_fatbin.h"
 
 #define SPIR_TRIPLE "hip-spir64-unknown-unknown"
 

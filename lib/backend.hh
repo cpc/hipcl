@@ -11,7 +11,7 @@
 #define CL_HPP_MINIMUM_OPENCL_VERSION 200
 #include <CL/cl2.hpp>
 
-#include "hipcl.hh"
+#include "hip/hipcl.hh"
 
 /************************************************************/
 

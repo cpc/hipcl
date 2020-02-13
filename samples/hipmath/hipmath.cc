@@ -1,5 +1,5 @@
 
-#include "hipcl.hh"
+#include "hip/hip_runtime.h"
 
 #include <cmath>
 #include <cstdio>

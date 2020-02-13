@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include <cstdlib>
 #include <stdio.h>
 
-#include "hipcl.hh"
+#include "hip/hip_runtime.h"
 
 #define CHECK(cmd)                                                                                 \
     {                                                                                              \

@@ -24,8 +24,8 @@ THE SOFTWARE.
 #define HISTOGRAM_H_
 
 
-#include "hipcl.hh"
-#include "hip_vector_types.h"
+#include "hip/hip_runtime.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>

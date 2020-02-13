@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "hipcl.hh"
+#include "hip/hip_runtime.h"
 #include <cstdio>
 #include <cstdlib>
 

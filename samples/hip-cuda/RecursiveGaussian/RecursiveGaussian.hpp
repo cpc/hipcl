@@ -23,12 +23,13 @@ THE SOFTWARE.
 #ifndef RECURSIVE_GAUSSIAN_H_
 #define RECURSIVE_GAUSSIAN_H_
 
-#include "hipcl.hh"
-#include "hip_vector_types.h"
+#include "hip/hip_runtime.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+
 #include "../include/HIPUtil.hpp"
 #include "../include/SDKBitMap.hpp"
 

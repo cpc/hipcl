@@ -6,7 +6,7 @@
 #include <chrono>
 
 // hip header file
-#include "hipcl.hh"
+#include "hip/hip_runtime.h"
 
 #define SEED 19284975223
 

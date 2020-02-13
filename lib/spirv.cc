@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <spirv.hh>
+#include "spirv.hh"
 
 #include "common.hh"
 

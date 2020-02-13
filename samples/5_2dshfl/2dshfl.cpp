@@ -22,8 +22,7 @@ THE SOFTWARE.
 
 #include <iostream>
 
-#include "hipcl.hh"
-
+#include "hip/hip_runtime.h"
 
 #define WIDTH 4
 

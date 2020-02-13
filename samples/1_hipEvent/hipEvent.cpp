@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include <cassert>
 
 // hip header file
-#include "hipcl.hh"
+#include "hip/hip_runtime.h"
 
 #define WIDTH 1024
 
