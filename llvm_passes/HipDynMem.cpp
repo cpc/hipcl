@@ -42,6 +42,28 @@ private:
     }
   }
 
+  // Recursively descend a Value's users and convert any constant expressions
+  // into regular instructions. returns true if it modified Func
+  bool breakConstantExpressions(Value *Val, Function *Func) {
+    bool Modified = false;
+    std::vector<Value *> Users(Val->user_begin(), Val->user_end());
+    for (auto *U : Users) {
+      if (auto *CE = dyn_cast<ConstantExpr>(U)) {
+        // First, make sure no users of this constant expression are themselves
+        // constant expressions.
+        Modified |= breakConstantExpressions(U, Func);
+
+        // Convert this constant expression to an instruction.
+        llvm::Instruction *I = CE->getAsInstruction();
+        I->insertBefore(&*Func->begin()->begin());
+        CE->replaceAllUsesWith(I);
+        CE->destroyConstant();
+        Modified = true;
+      }
+    }
+    return Modified;
+  }
+
   Function *getFunctionUsingGlobalVar(GlobalVariable *GV) {
     FSet FuncSet;
     recursivelyFindFunctions(GV, FuncSet);
@@ -158,8 +180,7 @@ private:
     IRBuilder<> B(M.getContext());
     B.SetInsertPoint(NewF->getEntryBlock().getFirstNonPHI());
 
-    std::vector<llvm::Value *> Users(GV->user_begin(), GV->user_end());
-    for (auto U : Users) {
+    for (auto U : GV->users()) {
       if (!isValueUsedByFunction(U, NewF))
         continue;
       PointerType *UTy = dyn_cast<PointerType>(U->getType());
@@ -170,6 +191,16 @@ private:
       } else {
         U->replaceAllUsesWith(last_arg);
       }
+    }
+
+    // replaceAllUsesWith does not actually replace all uses.
+    // Bitcasts created by breakConstantExpressions are not removed;
+    // have to do it manually here
+    for (auto U : GV->users()) {
+      assert(!isValueUsedByFunction(U, NewF));
+      Instruction *CC = dyn_cast<Instruction>(U);
+      assert(CC != nullptr);
+      CC->eraseFromParent();
     }
 
     return NewF;
@@ -201,6 +232,8 @@ private:
         if (F == nullptr) {
           continue;
         }
+
+        breakConstantExpressions(GV, F);
 
         Function *NewF = cloneFunctionWithDynMemArg(F, M, GV);
         assert(NewF && "cloning failed");
