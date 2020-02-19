@@ -1046,7 +1046,9 @@ void ClDevice::setupProperties(int index) {
 
   // totally made up
   Properties.regsPerBlock = 64;
-  Properties.warpSize = 64;
+  // intel GPU uses minimum 8, so for now set this to 8.
+  // TODO should be properly detected and/or workarounds for __shfl should exist.
+  Properties.warpSize = 8;
   Properties.maxGridSize[0] = Properties.maxGridSize[1] =
       Properties.maxGridSize[2] = 65536;
   Properties.memoryClockRate = 1000;
