@@ -10,7 +10,10 @@ set_source_files_properties(${HIPCL_SOURCES} PROPERTIES LANGUAGE CXX)
 
 add_library(hipcl SHARED ${HIPCL_SOURCES})
 
-set_target_properties(hipcl PROPERTIES CXX_STANDARD_REQUIRED ON)
+set_target_properties(hipcl PROPERTIES
+                      CXX_STANDARD_REQUIRED ON
+                      SOVERSION "${LIB_API_VERSION}"
+                      VERSION "${LIB_BUILD_VERSION}")
 
 target_link_libraries(hipcl ${PTHREAD_LIBRARY} ${OpenCL_LIBRARIES})
 
