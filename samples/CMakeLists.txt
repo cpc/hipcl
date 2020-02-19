@@ -22,7 +22,7 @@ function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS SOURCE)
 
     add_dependencies("${EXEC_NAME}" "kernellib_bc")
 
-    target_link_libraries("${EXEC_NAME}" "hipcl")
+    target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
 
     install(TARGETS "${EXEC_NAME}"
             RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")

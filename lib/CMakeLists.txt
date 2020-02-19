@@ -15,7 +15,7 @@ set_target_properties(hipcl PROPERTIES
                       SOVERSION "${LIB_API_VERSION}"
                       VERSION "${LIB_BUILD_VERSION}")
 
-target_link_libraries(hipcl ${PTHREAD_LIBRARY} ${OpenCL_LIBRARIES})
+target_link_libraries(hipcl ${SANITIZER_LIBS} ${PTHREAD_LIBRARY} ${OpenCL_LIBRARIES})
 
 if(DEBUG)
     target_compile_definitions(hipcl PRIVATE "_GLIBCXX_DEBUG")
@@ -33,6 +33,11 @@ endif()
 target_compile_options(hipcl PRIVATE "-Wno-unused-parameter")
 
 target_compile_options(hipcl INTERFACE "-x" "hip")
+
+if(SANITIZER_OPTIONS)
+  target_compile_options(hipcl INTERFACE ${SANITIZER_OPTIONS})
+  target_compile_options(hipcl PRIVATE ${SANITIZER_OPTIONS})
+endif()
 
 target_compile_options(hipcl INTERFACE
         "$<INSTALL_INTERFACE:--hip-device-lib-path=${HIPCL_DATA_DIR}>"

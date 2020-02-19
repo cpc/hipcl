@@ -19,6 +19,41 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(ENABLE_UBSAN "Enable UBSanitizer" OFF)
+option(ENABLE_LSAN "Enable LeakSanitizer" OFF)
+set(SANITIZER_LIBS)
+
+if(ENABLE_ASAN)
+  if("${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "6.0.0")
+    list(APPEND SANITIZER_OPTIONS "-fsanitize=address")
+  else()
+    list(APPEND SANITIZER_OPTIONS "-fsanitize=address" "-fsanitize-recover=address")
+  endif()
+  list(APPEND SANITIZER_LIBS "asan")
+endif()
+
+if(ENABLE_LSAN)
+  list(APPEND SANITIZER_OPTIONS "-fsanitize=leak")
+  list(APPEND SANITIZER_LIBS "lsan")
+endif()
+
+if(ENABLE_TSAN)
+  list(APPEND SANITIZER_OPTIONS "-fsanitize=thread")
+  list(APPEND SANITIZER_LIBS "tsan")
+endif()
+
+if(ENABLE_UBSAN)
+  list(APPEND SANITIZER_OPTIONS "-fsanitize=undefined")
+  list(APPEND SANITIZER_LIBS "ubsan")
+endif()
+
+if(SANITIZER_OPTIONS)
+  list(APPEND SANITIZER_OPTIONS "-fno-omit-frame-pointer")
+  string(REPLACE ";" " " SANITIZER_OPTIONS_STR "${SANITIZER_OPTIONS}")
+endif()
+
 enable_testing()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
