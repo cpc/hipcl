@@ -34,19 +34,19 @@ THE SOFTWARE.
 #define THREADS_PER_BLOCK_Z 1
 
 // Device (Kernel) function, it must be void
-__global__ void matrixTranspose(float* out, float* in, const int width) {
+__global__ void matrixTranspose(float* out, float* in) {
     int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
     int y = hipBlockDim_y * hipBlockIdx_y + hipThreadIdx_y;
-    float val = in[y * width + x];
+    float val = in[y * WIDTH + x];
 
-    out[x * width + y] = __shfl(val, y * width + x);
+    out[x * WIDTH + y] = __shfl(val, y * WIDTH + x);
 }
 
 // CPU implementation of matrix transpose
-void matrixTransposeCPUReference(float* output, float* input, const unsigned int width) {
-    for (unsigned int j = 0; j < width; j++) {
-        for (unsigned int i = 0; i < width; i++) {
-            output[i * width + j] = input[j * width + i];
+void matrixTransposeCPUReference(float* output, float* input) {
+    for (unsigned int j = 0; j < WIDTH; j++) {
+        for (unsigned int i = 0; i < WIDTH; i++) {
+            output[i * WIDTH + j] = input[j * WIDTH + i];
         }
     }
 }
@@ -85,13 +85,13 @@ int main() {
 
     // Lauching kernel from host
     hipLaunchKernelGGL(matrixTranspose, dim3(1, 1), dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y), 0, 0,
-                    gpuTransposeMatrix, gpuMatrix, WIDTH);
+                    gpuTransposeMatrix, gpuMatrix);
 
     // Memory transfer from device to host
     hipMemcpy(TransposeMatrix, gpuTransposeMatrix, TOTAL * sizeof(float), hipMemcpyDeviceToHost);
 
     // CPU MatrixTranspose computation
-    matrixTransposeCPUReference(cpuTransposeMatrix, Matrix, WIDTH);
+    matrixTransposeCPUReference(cpuTransposeMatrix, Matrix);
 
     // verify the results
     errors = 0;
