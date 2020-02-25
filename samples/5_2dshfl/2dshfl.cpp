@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <cmath>
 
 #include "hip/hip_runtime.h"
 
@@ -94,9 +95,9 @@ int main() {
 
     // verify the results
     errors = 0;
-    double eps = 1.0E-6;
+    float eps = 1.0E-6;
     for (i = 0; i < TOTAL; i++) {
-        if (std::abs(TransposeMatrix[i] - cpuTransposeMatrix[i]) > eps) {
+        if (std::fabs(TransposeMatrix[i] - cpuTransposeMatrix[i]) > eps) {
             std::cout << "ITEM: " << i <<
                          " cpu: " << cpuTransposeMatrix[i] <<
                          " gpu: " << TransposeMatrix[i] << "\n";

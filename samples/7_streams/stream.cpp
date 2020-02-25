@@ -18,6 +18,8 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <cmath>
+
 #include "hip/hip_runtime.h"
 
 #define WIDTH 32
@@ -111,9 +113,9 @@ int main() {
 
     // verify the results
     int errors = 0;
-    double eps = 1.0E-6;
+    float eps = 1.0E-6;
     for (int i = 0; i < NUM; i++) {
-        if (std::abs(TransposeMatrix[0][i] - TransposeMatrix[1][i]) > eps) {
+        if (std::fabs(TransposeMatrix[0][i] - TransposeMatrix[1][i]) > eps) {
             printf("%d stream0: %f stream1  %f\n", i, TransposeMatrix[0][i], TransposeMatrix[1][i]);
             errors++;
         }

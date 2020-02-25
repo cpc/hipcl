@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include <iostream>
 #include <cassert>
+#include <cmath>
 
 // hip header file
 #include "hip/hip_runtime.h"
@@ -135,9 +136,9 @@ int main() {
 
     // verify the results
     errors = 0;
-    double eps = 1.0E-6;
+    float eps = 1.0E-6;
     for (i = 0; i < NUM; i++) {
-        if (std::abs(TransposeMatrix[i] - cpuTransposeMatrix[i]) > eps) {
+        if (std::fabs(TransposeMatrix[i] - cpuTransposeMatrix[i]) > eps) {
             errors++;
         }
     }
