@@ -30,6 +30,16 @@ THE SOFTWARE.
 #define NUM_G 8
 #define TOTAL (NUM_G * SG_SIZE)
 
+#define HIPCHECK(code)                                                         \
+  do {                                                                         \
+    hiperr = code;                                                             \
+    if (hiperr != hipSuccess) {                                                \
+      std::cerr << "ERROR on line " << __LINE__ << ": " << (unsigned)hiperr    \
+                << "\n";                                                       \
+      return 1;                                                                \
+    }                                                                          \
+  } while (0)
+
 // Device (Kernel) function, it must be void
 __global__ void matrixTranspose(float* out, float* in) {
     unsigned b_start = hipBlockDim_x * hipBlockIdx_x;
@@ -58,8 +68,10 @@ int main() {
     float* gpuMatrix;
     float* gpuTransposeMatrix;
 
+    hipError_t hiperr = hipSuccess;
+
     hipDeviceProp_t devProp;
-    hipGetDeviceProperties(&devProp, 0);
+    HIPCHECK(hipGetDeviceProperties(&devProp, 0));
 
     std::cout << "Device name " << devProp.name << std::endl;
 
@@ -76,18 +88,21 @@ int main() {
     }
 
     // allocate the memory on the device side
-    hipMalloc((void**)&gpuMatrix, TOTAL * sizeof(float));
-    hipMalloc((void**)&gpuTransposeMatrix, TOTAL * sizeof(float));
+    HIPCHECK(hipMalloc((void **)&gpuMatrix, TOTAL * sizeof(float)));
+    HIPCHECK(hipMalloc((void **)&gpuTransposeMatrix, TOTAL * sizeof(float)));
 
     // Memory transfer from host to device
-    hipMemcpy(gpuMatrix, Matrix, TOTAL * sizeof(float), hipMemcpyHostToDevice);
+    HIPCHECK(hipMemcpy(gpuMatrix, Matrix, TOTAL * sizeof(float),
+                       hipMemcpyHostToDevice));
 
     // Lauching kernel from host
     hipLaunchKernelGGL(matrixTranspose, dim3(NUM_G), dim3(SG_SIZE), 0, 0,
                        gpuTransposeMatrix, gpuMatrix);
+    HIPCHECK(hipGetLastError());
 
     // Memory transfer from device to host
-    hipMemcpy(TransposeMatrix, gpuTransposeMatrix, TOTAL * sizeof(float), hipMemcpyDeviceToHost);
+    HIPCHECK(hipMemcpy(TransposeMatrix, gpuTransposeMatrix,
+                       TOTAL * sizeof(float), hipMemcpyDeviceToHost));
 
     // CPU MatrixTranspose computation
     matrixTransposeCPUReference(cpuTransposeMatrix, Matrix);
@@ -114,13 +129,13 @@ int main() {
       }
 
     // free the resources on device side
-    hipFree(gpuMatrix);
-    hipFree(gpuTransposeMatrix);
+      HIPCHECK(hipFree(gpuMatrix));
+      HIPCHECK(hipFree(gpuTransposeMatrix));
 
-    // free the resources on host side
-    free(Matrix);
-    free(TransposeMatrix);
-    free(cpuTransposeMatrix);
+      // free the resources on host side
+      free(Matrix);
+      free(TransposeMatrix);
+      free(cpuTransposeMatrix);
 
-    return errors;
+      return errors;
 }
