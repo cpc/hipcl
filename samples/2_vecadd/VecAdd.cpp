@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <random>
 #include <functional>
 #include <cassert>
@@ -7,7 +8,7 @@
 // hip header file
 #include "hip/hip_runtime.h"
 
-#define SEED 19284975223
+#define SEED 192849223
 
 #define LOC_WG 16
 #define GRID_WG 128
@@ -20,10 +21,10 @@ typedef std::function<int(void)> RandomGenFuncInt;
 
 template <typename T>
 __global__ void
-VecMAD (const T * __restrict A, const T * __restrict B, T * __restrict C, const T multiplier)
+VecADD (const T * __restrict A, const T * __restrict B, T * __restrict C, const T multiplier)
 {
   const uint i = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
-  C[i] = A[i] + B[i] * multiplier;
+  C[i] = A[i] + B[i] + multiplier;
 }
 
 
@@ -36,23 +37,19 @@ void ArrayMADcpuReference(const T* __restrict A,
                           T * __restrict C,
                           const T multiplier) {
   for (uint i = 0; i < NUM; i++) {
-    C[i] = A[i] + B[i] * multiplier; // + make_float4(6.0f, 1.0f, 2.0f, 3.0f);
+    C[i] = A[i] + B[i] + multiplier;
   }
 }
 
 template <typename T, typename CMPT>
 bool compareRes4(size_t i, bool print, T res1, T res2)
 {
-  CMPT res = (res1 != res2);
-  if (res.x + res.y + res.z + res.w == 0)
+  if (res1.x == res2.x && res1.y == res2.y &&
+      res1.z == res2.z && res1.w == res2.w)
     return true;
 
   if (print) {
       std::cerr << "FAIL AT: " << i << "\n";
-      std::cerr << "CMP: " << res.x << " "
-                << res.y << " "
-                << res.z << " "
-                << res.w << "\n";
 
       std::cerr << "CPU: " << res1.x << " "
                 << res1.y << " "
@@ -68,13 +65,12 @@ bool compareRes4(size_t i, bool print, T res1, T res2)
 
 template <typename T, typename CMPT>
 bool compareRes3(size_t i, bool print, T res1, T res2) {
-  CMPT res = (res1 != res2);
-  if (res.x + res.y + res.z == 0)
+  if (res1.x == res2.x && res1.y == res2.y &&
+      res1.z == res2.z)
     return true;
 
   if (print) {
     std::cerr << "FAIL AT: " << i << "\n";
-    std::cerr << "CMP: " << res.x << " " << res.y << " " << res.z << "\n";
 
     std::cerr << "CPU: " << res1.x << " " << res1.y << " " << res1.z << "\n";
 
@@ -86,15 +82,11 @@ bool compareRes3(size_t i, bool print, T res1, T res2) {
 template <typename T, typename CMPT>
 bool compareRes2(size_t i, bool print, T res1, T res2)
 {
-  CMPT res = (res1 != res2);
-
-  if (res.x + res.y == 0)
+  if (res1.x == res2.x && res1.y == res2.y)
     return true;
 
   if (print) {
       std::cerr << "FAIL AT: " << i << "\n";
-      std::cerr << "CMP: " << res.x << " "
-                << res.y << "\n";
 
       std::cerr << "CPU: " << res1.x << " "
                 << res1.y << "\n";
@@ -179,7 +171,7 @@ __host__ int TestVectors(RNG rnd, const T multiplier,
     ERR_CHECK;
     err = hipMemcpy(gpuArray2, Array2, NUM * sizeof(T), hipMemcpyHostToDevice);
     ERR_CHECK;
-    hipLaunchKernelGGL(VecMAD<T>,
+    hipLaunchKernelGGL(VecADD<T>,
                        dim3(GRID_WG),
                        dim3(LOC_WG),
                        0, 0,
@@ -234,6 +226,9 @@ int main() {
 
   hipDeviceProp_t devProp;
   hipGetDeviceProperties(&devProp, 0);
+
+  std::cerr << std::hexfloat;
+
   std::cout << "Device name " << devProp.name << std::endl;
 
   std::cout << "float4 test\n";
