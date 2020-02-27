@@ -600,7 +600,7 @@ static std::string getPath()
     ssize_t len;
     if((len = readlink("/proc/self/exe",buffer, sizeof(buffer) - 1)) == -1)
     {
-        throw std::string("readlink() failed!");
+        return std::string("");
     }
     buffer[len] = '\0';
     std::string str(buffer);
