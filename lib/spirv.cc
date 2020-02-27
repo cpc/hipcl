@@ -53,6 +53,10 @@ public:
       ASpace = OCLSpace::Constant;
       break;
 
+    case (int32_t)spv::StorageClass::Function:
+      assert(0 && "should have been handled elsewhere!");
+      break;
+
     default:
       ASpace = OCLSpace::Unknown;
     }
@@ -83,6 +87,9 @@ public:
 
     if (wordCount > 2)
       word2 = stream[2];
+
+    if (wordCount > 3)
+      word3 = stream[3];
 
     if (opcode == spv::Op::OpEntryPoint) {
       const char *pp = (const char *)(stream + 3);
@@ -177,7 +184,15 @@ public:
     }
 
     if (opcode == spv::Op::OpTypePointer) {
-      return new SPIRVtypePointer(word1, word2, pointerSize);
+      // structs or vectors passed by value are represented in LLVM IR / SPIRV
+      // by a pointer with "byval" keyword; handle them here
+      if (word2 == (int32_t)spv::StorageClass::Function) {
+        int32_t pointee = word3;
+        size_t pointee_size = typeMap[pointee]->size();
+        return new SPIRVtypePOD(word1, pointee_size);
+
+      } else
+        return new SPIRVtypePointer(word1, word2, pointerSize);
     }
 
     return nullptr;
