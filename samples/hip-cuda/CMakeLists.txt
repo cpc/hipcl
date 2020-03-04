@@ -5,10 +5,9 @@ set(SAMPLES
     dwtHaar1D
     FastWalshTransform
     FloydWarshall
-# requires dynamic memory:
-#   Histogram
-# is broken:
-#   PrefixSum
+    Histogram
+#   still broken:
+#    PrefixSum
     RecursiveGaussian
     SimpleConvolution
 )

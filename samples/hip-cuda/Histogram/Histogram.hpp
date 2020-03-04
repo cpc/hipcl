@@ -196,7 +196,7 @@ class Histogram
         template<typename T>
         int mapBuffer(cl_mem deviceBuffer, T* &hostPointer, size_t sizeInBytes,
                       cl_map_flags flags=CL_MAP_READ);
-
+        */
         /**
         * clEnqueueUnmapMemObject
         * @return SDK_SUCCESS on success and SDK_FAILURE on failure
