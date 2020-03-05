@@ -32,13 +32,15 @@ __global__ void floatMath(float *In, float *Buf1Out, float *Buf2Out) {
   Buf1Out += SINCOS_N;
   Buf2Out += SINCOS_N;
   In += SINCOS_N;
-  Buf2Out[0] = frexp(In[0], (int *)Buf1Out);
-  Buf2Out[1] = remquo(In[1], 2.0f, (int *)(Buf1Out + 1));
 
+  Buf2Out[0] = frexpf(In[0], (int *)Buf1Out);
+  Buf2Out[1] = remquof(In[1], 2.0f, (int *)(Buf1Out + 1));
   Buf2Out[2] = (float)atomicAdd((volatile int *)(In + 2), ATOM_ADD);
   Buf2Out[3] = (float)atomicSub((volatile int *)(In + 3), ATOM_ADD);
   Buf2Out[4] = (float)atomicMin((volatile int *)(In + 4), MIN_VAL);
   Buf2Out[5] = (float)atomicMax((volatile int *)(In + 5), MIN_VAL);
+  Buf2Out[6] = acosf(In[6]);
+  Buf2Out[7] = acoshf(In[7]);
 }
 
 unsigned bitcast_u(float j) {
