@@ -25,6 +25,10 @@ THE SOFTWARE.
  *  @brief Defines the different newt vector types for HIP runtime.
  */
 
+#ifndef HIPCL_HIP_RUNTIME_H
+#error Include this file after including hip/hip_runtime.h
+#endif
+
 #ifndef HIP_INCLUDE_HIP_HCC_DETAIL_HIP_VECTOR_TYPES_H
 #define HIP_INCLUDE_HIP_HCC_DETAIL_HIP_VECTOR_TYPES_H
 
