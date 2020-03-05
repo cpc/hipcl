@@ -199,6 +199,26 @@ hipError_t hipSetDeviceFlags(unsigned flags) {
   return hipSuccess;
 }
 
+hipError_t hipDeviceCanAccessPeer(int *canAccessPeer, int deviceId,
+                                  int peerDeviceId) {
+  // TODO this needs implementing
+  ERROR_CHECK_DEVNUM(deviceId);
+  ERROR_CHECK_DEVNUM(peerDeviceId);
+  if (deviceId == peerDeviceId)
+    *canAccessPeer = 1;
+  else
+    *canAccessPeer = 0;
+  return hipSuccess;
+}
+
+hipError_t hipDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
+  return hipErrorInvalidDevice;
+}
+
+hipError_t hipDeviceDisablePeerAccess(int peerDeviceId) {
+  return hipErrorPeerAccessNotEnabled;
+}
+
 hipError_t hipChooseDevice(int *device, const hipDeviceProp_t *prop) {
   hipDeviceProp_t tempProp;
   ERROR_IF(((device == nullptr) || (prop == nullptr)), hipErrorInvalidValue);
