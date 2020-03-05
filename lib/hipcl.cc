@@ -296,7 +296,7 @@ hipError_t hipGetLastError(void) {
   return temp;
 }
 
-hipError_t hipPeekAttls_LastError(void) { return tls_LastError; }
+hipError_t hipPeekAtLastError(void) { return tls_LastError; }
 
 const char *hipGetErrorName(hipError_t hip_error) {
   switch (hip_error) {
