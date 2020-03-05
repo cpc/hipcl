@@ -204,7 +204,6 @@ int main() {
     }
 
     size_t i, j;
-    int errors;
 
     Matrix1 = new float [NUM];
     Matrix2 = new float [NUM];
@@ -292,7 +291,7 @@ int main() {
     std::cout << "matrixMultiplyCPUReference time taken(ms): " <<  fp_ms.count() << "\n";
 
     // verify the results
-    errors = 0;
+    size_t errors = 0;
     float eps = 1.0;
     for (i = 0; i < WIDTH; i++) {
         for (j = 0; j < WIDTH; j++) {
@@ -306,11 +305,6 @@ int main() {
                       << gpu << " ERROR: " << std::fabs(gpu - cpu) << "\n";
           }
         }
-    }
-    if (errors != 0) {
-        std::cout << "Verification FAILED: " << errors << "  errors\n";
-    } else {
-        std::cout << "Verification PASSED!\n";
     }
 
     // free the resources on device side
@@ -327,5 +321,11 @@ int main() {
     delete [] MultiplyMatrix;
     delete [] cpuMultiplyMatrix;
 
-    return errors;
+    if (errors != 0) {
+      std::cout << "Verification FAILED: " << errors << "  errors\n";
+      return 1;
+    } else {
+      std::cout << "Verification PASSED!\n";
+      return 0;
+    }
 }
