@@ -104,8 +104,8 @@ bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
              (unsigned)FuncInfo->retTypeInfo.space,
              (unsigned)FuncInfo->retTypeInfo.type);
     for (auto &argty : FuncInfo->ArgTypeInfo) {
-      logDebug("  ARG_TYPE: {} {} {}\n", argty.size, (unsigned)argty.space,
-               (unsigned)argty.type);
+      logDebug("  ARG: SIZE {} SPACE {} TYPE {}\n", argty.size,
+               (unsigned)argty.space, (unsigned)argty.type);
       TotalArgSize += argty.size;
     }
   }
@@ -125,15 +125,17 @@ int ClKernel::setAllArgs(void **args, size_t shared) {
       p = *(void **)(args[i]);
       logDebug("setArg SVM {} to PTR {}\n", i, p);
       err = ::clSetKernelArgSVMPointer(Kernel(), i, p);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArgSVMPointer failed with error {}\n", err);
         return err;
+      }
     } else {
       logDebug("setArg {} SIZE {}\n", i, ai.size);
       err = ::clSetKernelArg(Kernel(), i, ai.size, args[i]);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArg failed with error {}\n", err);
         return err;
+      }
     }
   }
 
@@ -142,7 +144,7 @@ int ClKernel::setAllArgs(void **args, size_t shared) {
                            FuncInfo->ArgTypeInfo.size()-1,
                            shared, nullptr);
     if (err != CL_SUCCESS) {
-      logError ("Failed to set dynamic local size!\n");
+      logError("clSetKernelArg() failed to set dynamic local size!\n");
       return err;
     }
   }
@@ -163,16 +165,18 @@ int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
       void *pp = *(void **)p;
       logDebug("setArg SVM {} to PTR {}\n", i, pp);
       err = ::clSetKernelArgSVMPointer(Kernel(), i, pp);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArgSVMPointer failed with error {}\n", err);
         return err;
+      }
 
     } else {
       logDebug("setArg {} SIZE {}\n", i, ai.size);
       err = ::clSetKernelArg(Kernel(), i, ai.size, p);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArg failed with error {}\n", err);
         return err;
+      }
     }
 
     p = (char *)p + ai.size;
@@ -183,7 +187,7 @@ int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
                            FuncInfo->ArgTypeInfo.size()-1,
                            shared, nullptr);
     if (err != CL_SUCCESS) {
-      logError ("Failed to set dynamic local size!\n");
+      logError("clSetKernelArg() failed to set dynamic local size!\n");
       return err;
     }
   }
@@ -356,6 +360,8 @@ hipError_t ClQueue::memCopy(void *dst, const void *src, size_t size) {
     } else
       logDebug("memCopy: LastEvent == NULL, will be: {}\n", (void *)ev);
     LastEvent = ev;
+  } else {
+    logError("clEnqueueSVMMemCopy() failed with error {}\n", retval);
   }
   return (retval == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 }
@@ -376,11 +382,19 @@ hipError_t ClQueue::memFill(void *dst, size_t size, void *pattern,
     } else
       logDebug("memFill: LastEvent == NULL, will be: {}\n", (void *)ev);
     LastEvent = ev;
+  } else {
+    logError("clEnqueueSVMMemFill() failed with error {}\n", retval);
   }
+
   return (retval == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 }
 
-bool ClQueue::finish() { return Queue.finish() == CL_SUCCESS; }
+bool ClQueue::finish() {
+  int err = Queue.finish();
+  if (err != CL_SUCCESS)
+    logError("clFinish() failed with error {}\n", err);
+  return err == CL_SUCCESS;
+}
 
 static void notifyOpenCLevent(cl_event event, cl_int status, void *data) {
   hipStreamCallbackData *Data = (hipStreamCallbackData *)data;
@@ -403,6 +417,8 @@ bool ClQueue::addCallback(hipStreamCallback_t callback, void *userData) {
   Data->UserData = userData;
   Data->Status = hipSuccess;
   err = ::clSetEventCallback(LastEvent, CL_COMPLETE, notifyOpenCLevent, Data);
+  if (err != CL_SUCCESS)
+    logError("clSetEventCallback failed with error {}\n", err);
   return (err == CL_SUCCESS);
 }
 
@@ -420,8 +436,10 @@ bool ClQueue::enqueueBarrierForEvent(hipEvent_t ProvidedEvent) {
   cl::vector<cl::Event> Events = {MarkerEvent, ProvidedEvent->getEvent()};
   cl::Event barrier;
   err = Queue.enqueueBarrierWithWaitList(&Events, &barrier);
-  if (err != CL_SUCCESS)
+  if (err != CL_SUCCESS) {
+    logError("clEnqueueBarrierWithWaitList failed with error {}\n", err);
     return false;
+  }
 
   if (LastEvent)
     clReleaseEvent(LastEvent);
@@ -484,6 +502,8 @@ hipError_t ClQueue::launch(ClKernel *Kernel, ExecItem *Arguments) {
   int err = Queue.enqueueNDRangeKernel(Kernel->get(), cl::NullRange, global,
                                        local, nullptr, &ev);
 
+  if (err != CL_SUCCESS)
+    logError("clEnqueueNDRangeKernel() failed with: {}\n", err);
   hipError_t retval = (err == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 
   if (retval == hipSuccess) {
@@ -515,6 +535,8 @@ hipError_t ClQueue::launch3(ClKernel *Kernel, dim3 grid, dim3 block) {
   int err = Queue.enqueueNDRangeKernel(Kernel->get(), cl::NullRange, global,
                                        local, nullptr, &ev);
 
+  if (err != CL_SUCCESS)
+    logError("clEnqueueNDRangeKernel() failed with: {}\n", err);
   hipError_t retval = (err == CL_SUCCESS) ? hipSuccess : hipErrorLaunchFailure;
 
   if (retval == hipSuccess) {
@@ -587,16 +609,22 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
   int err;
   for (cl_uint i = 0; i < OffsetsSizes.size(); ++i) {
     OCLArgTypeInfo &ai = FuncInfo->ArgTypeInfo[i];
+    logDebug("ARG {}: OS[0]: {} OS[1]: {} \n      TYPE {} SPAC {} SIZE {}\n", i,
+             std::get<0>(OffsetsSizes[i]), std::get<1>(OffsetsSizes[i]),
+             (unsigned)ai.type, (unsigned)ai.space, ai.size);
+
     if (ai.type == OCLType::Pointer) {
+
       // TODO other than global AS ?
       assert(ai.size == sizeof(void *));
       assert(std::get<1>(OffsetsSizes[i]) == ai.size);
       p = *(void **)(start + std::get<0>(OffsetsSizes[i]));
       logDebug("setArg SVM {} to {}\n", i, p);
       err = ::clSetKernelArgSVMPointer(kernel->get().get(), i, p);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArgSVMPointer failed with error {}\n", err);
         return err;
+      }
     } else {
       size_t size = std::get<1>(OffsetsSizes[i]);
       size_t offs = std::get<0>(OffsetsSizes[i]);
@@ -604,9 +632,10 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
       logDebug("setArg {} size {} offs {}\n", i, size, offs);
       err =
           ::clSetKernelArg(kernel->get().get(), i, size, value);
-      logDebug("ERR {}\n", err);
-      if (err != CL_SUCCESS)
+      if (err != CL_SUCCESS) {
+        logDebug("clSetKernelArg failed with error {}\n", err);
         return err;
+      }
     }
   }
 
@@ -615,7 +644,7 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
                      (FuncInfo->ArgTypeInfo.size()-1),
                      this->SharedMem, nullptr);
     if (err != CL_SUCCESS) {
-      logError ("Failed to set dynamic local size!\n");
+      logError("clSetKernelArg() failed to set dynamic local size!\n");
       return err;
     }
   }
@@ -644,6 +673,7 @@ ClContext::ClContext(ClDevice *D, unsigned f) {
 
 void ClContext::reset() {
   std::lock_guard<std::mutex> Lock(ContextMutex);
+  int err;
 
   while (!this->ExecStack.empty()) {
     ExecItem *Item = ExecStack.top();
@@ -656,7 +686,9 @@ void ClContext::reset() {
   this->Memory.clear();
 
   cl::CommandQueue CmdQueue(Context, Device->getDevice(),
-                            CL_QUEUE_PROFILING_ENABLE);
+                            CL_QUEUE_PROFILING_ENABLE, &err);
+  assert(err == CL_SUCCESS);
+
   DefaultQueue = new ClQueue(CmdQueue, 0, 0);
 }
 
@@ -806,8 +838,11 @@ hipError_t ClContext::eventElapsedTime(float *ms, hipEvent_t start,
 bool ClContext::createQueue(hipStream_t *stream, unsigned flags, int priority) {
   std::lock_guard<std::mutex> Lock(ContextMutex);
 
+  int err;
   cl::CommandQueue NewQueue(Context, Device->getDevice(),
-                            CL_QUEUE_PROFILING_ENABLE);
+                            CL_QUEUE_PROFILING_ENABLE, &err);
+  assert(err == CL_SUCCESS);
+
   hipStream_t Ptr = new ClQueue(NewQueue, flags, priority);
   Queues.insert(Ptr);
   *stream = Ptr;
@@ -836,7 +871,11 @@ bool ClContext::finishAll() {
   }
 
   for (cl::CommandQueue &I : Copies) {
-    I.finish();
+    int err = I.finish();
+    if (err != CL_SUCCESS) {
+      logError("clFinish() failed with error {}\n", err);
+      return false;
+    }
   }
   return true;
 }
@@ -903,10 +942,11 @@ hipError_t ClContext::launchHostFunc(const void *HostFunction) {
 
   std::lock_guard<std::mutex> Lock(ContextMutex);
 
+  ClKernel *Kernel = nullptr;
   // TODO can this happen ?
-  assert(BuiltinPrograms.find(HostFunction) != BuiltinPrograms.end());
+  if (BuiltinPrograms.find(HostFunction) != BuiltinPrograms.end())
+    Kernel = BuiltinPrograms[HostFunction]->getKernel(FunctionName);
 
-  ClKernel *Kernel = BuiltinPrograms[HostFunction]->getKernel(FunctionName);
   if (Kernel == nullptr) {
     logCritical("can NOT find kernel with stub address {} for device {}\n",
                 HostFunction, Device->getHipDeviceT());
