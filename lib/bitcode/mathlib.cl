@@ -10,62 +10,87 @@
  *   float @_Z6sincosfPf(float, float *)
 */
 
-#define CL_NAME_MANGLED_ATOM3(NAME, X, POSTFIX) _Z##X##opencl_##NAME##POSTFIX
-#define CL_NAME_MANGLED_ATOM(NAME, S, X, POSTFIX)                              \
-  CL_NAME_MANGLED_ATOM3(atomic_##NAME##S, X, POSTFIX)
-
+#define NON_OVLD
 #define OVLD __attribute__((overloadable))
 //#define AI __attribute__((always_inline))
-#define EXPORT OVLD
+#define EXPORT NON_OVLD
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
 #define DEFAULT_AS
 #define PRIVATE_AS __private
 
-#define CL_NAME(N) opencl_ ## N
+#define CL_NAME(N) opencl_##N
+#define CL_NAME2(N, S) opencl__##N##_##S
+
+#define CL_NAME_MANGLED_ATOM(NAME, S) CL_NAME2(atomic_##NAME, S)
 
 #define DEFOCML_OPENCL1F(NAME) \
 float OVLD NAME(float f); \
 double OVLD NAME(double f); \
-EXPORT float CL_NAME(NAME)(float x) { return NAME(x); } \
-EXPORT double CL_NAME(NAME)(double x) { return NAME(x); }
+half OVLD NAME(half f); \
+half2 OVLD NAME(half2 f); \
+EXPORT float CL_NAME2(NAME, f)(float x) { return NAME(x); } \
+EXPORT double CL_NAME2(NAME, d)(double x) { return NAME(x); } \
+EXPORT half CL_NAME2(NAME, h)(half x) { return NAME(x); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x) { return NAME(x); }
+
 
 #define DEFOCML_OPENCL2F(NAME) \
 float OVLD NAME(float x, float y); \
 double OVLD NAME(double x, double y); \
-EXPORT float CL_NAME(NAME)(float x, float y) { return NAME(x, y); } \
-EXPORT double CL_NAME(NAME)(double x, double y) { return NAME(x, y); }
+half OVLD NAME(half x, half y); \
+half2 OVLD NAME(half2 x, half2 y); \
+EXPORT float CL_NAME2(NAME, f)(float x, float y) { return NAME(x, y); } \
+EXPORT double CL_NAME2(NAME, d)(double x, double y) { return NAME(x, y); } \
+EXPORT half CL_NAME2(NAME, h)(half x, half y) { return NAME(x, y); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x, half2 y) { return NAME(x, y); }
 
+/*****************************************************************/
 
 #define DEF_OPENCL1F(NAME) \
-EXPORT float CL_NAME(NAME)(float x) { return NAME(x); } \
-EXPORT double CL_NAME(NAME)(double x) { return NAME(x); }
+EXPORT float CL_NAME2(NAME, f)(float x) { return NAME(x); } \
+EXPORT double CL_NAME2(NAME, d)(double x) { return NAME(x); } \
+EXPORT half CL_NAME2(NAME, h)(half x) { return NAME(x); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x) { return NAME(x); }
 
 #define DEF_OPENCL2F(NAME) \
-EXPORT float CL_NAME(NAME)(float x, float y) { return NAME(x, y); } \
-EXPORT double CL_NAME(NAME)(double x, double y) { return NAME(x, y); }
+EXPORT float CL_NAME2(NAME, f)(float x, float y) { return NAME(x, y); } \
+EXPORT double CL_NAME2(NAME, d)(double x, double y) { return NAME(x, y); } \
+EXPORT half CL_NAME2(NAME, h)(half x, half y) { return NAME(x, y); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x, half2 y) { return NAME(x, y); }
 
 #define DEF_OPENCL3F(NAME) \
-EXPORT float CL_NAME(NAME)(float x, float y, float z) { return NAME(x, y, z); } \
-EXPORT double CL_NAME(NAME)(double x, double y, double z) { return NAME(x, y, z); }
+EXPORT float CL_NAME2(NAME, f)(float x, float y, float z) { return NAME(x, y, z); } \
+EXPORT double CL_NAME2(NAME, d)(double x, double y, double z) { return NAME(x, y, z); } \
+EXPORT half CL_NAME2(NAME, h)(half x, half y, half z) { return NAME(x, y, z); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x, half2 y, half2 z) { return NAME(x, y, z); }
 
 #define DEF_OPENCL4F(NAME) \
-EXPORT float CL_NAME(NAME)(float x, float y, float z, float w) { return NAME(x, y, z, w); } \
-EXPORT double CL_NAME(NAME)(double x, double y, double z, double w) { return NAME(x, y, z, w); }
+EXPORT float CL_NAME2(NAME, f)(float x, float y, float z, float w) { return NAME(x, y, z, w); } \
+EXPORT double CL_NAME2(NAME, d)(double x, double y, double z, double w) { return NAME(x, y, z, w); } \
+EXPORT half CL_NAME2(NAME, h)(half x, half y, half z, half w) { return NAME(x, y, z, w); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x, half2 y, half2 z, half2 w) { return NAME(x, y, z, w); }
 
 #define DEF_OPENCL1B(NAME) \
-EXPORT int CL_NAME(NAME)(float x) { return NAME(x); } \
-EXPORT long CL_NAME(NAME)(double x) { return NAME(x); }
+EXPORT int CL_NAME2(NAME, f)(float x) { return NAME(x); } \
+EXPORT long CL_NAME2(NAME, d)(double x) { return NAME(x); } \
+EXPORT half CL_NAME2(NAME, h)(half x) { return as_half(convert_short(NAME(x))); } \
+EXPORT half2 CL_NAME2(NAME, h2)(half2 x) { return as_half2(NAME(x)); }
+
 
 #define DEF_OPENCL1INT(NAME) \
-EXPORT int CL_NAME(NAME)(float x) { return NAME(x); } \
-EXPORT int CL_NAME(NAME)(double x) { return NAME(x); }
+EXPORT int CL_NAME2(NAME, f)(float x) { return NAME(x); } \
+EXPORT int CL_NAME2(NAME, d)(double x) { return NAME(x); } \
+EXPORT int CL_NAME2(NAME, h)(half x) { return NAME(x); }
+//EXPORT int CL_NAME(NAME, h2)(half2 x) { return NAME(x); }
 
 #define DEF_OPENCL1F_NATIVE(NAME) \
-EXPORT float CL_NAME(NAME##_native)(float x) { return native_##NAME(x); }
+EXPORT float CL_NAME2(NAME##_native, f)(float x) { return native_##NAME(x); }
 
-
+// +7
 DEF_OPENCL1F(acos)
 DEF_OPENCL1F(asin)
 DEF_OPENCL1F(acosh)
@@ -85,12 +110,12 @@ DEF_OPENCL1F(cospi)
 // OCML
 float OVLD i0(float f);
 double OVLD i0(double f);
-EXPORT float CL_NAME(cyl_bessel_i0)(float x) { return i0(x); }
-EXPORT double CL_NAME(cyl_bessel_i0)(double x) { return i0(x); }
+EXPORT float CL_NAME2(cyl_bessel_i0, f)(float x) { return i0(x); }
+EXPORT double CL_NAME2(cyl_bessel_i0, d)(double x) { return i0(x); }
 float OVLD i1(float f);
 double OVLD i1(double f);
-EXPORT float CL_NAME(cyl_bessel_i1)(float x) { return i1(x); }
-EXPORT double CL_NAME(cyl_bessel_i1)(double x) { return i1(x); }
+EXPORT float CL_NAME2(cyl_bessel_i1, f)(float x) { return i1(x); }
+EXPORT double CL_NAME2(cyl_bessel_i1, d)(double x) { return i1(x); }
 
 
 DEF_OPENCL1F(erfc)
@@ -117,13 +142,13 @@ DEF_OPENCL2F(fmod)
 
 float OVLD frexp(float f, PRIVATE_AS int *i);
 double OVLD frexp(double f, PRIVATE_AS int *i);
-float _Z14opencl_frexp_ffPi(float x, DEFAULT_AS int *i) {
+EXPORT float CL_NAME2(frexp, f)(float x, DEFAULT_AS int *i) {
   int tmp;
   float ret = frexp(x, &tmp);
   *i = tmp;
   return ret;
 }
-double _Z14opencl_frexp_ddPi(double x, DEFAULT_AS int *i) {
+EXPORT float CL_NAME2(frexp, d)(double x, DEFAULT_AS int *i) {
   int tmp;
   double ret = frexp(x, &tmp);
   *i = tmp;
@@ -142,13 +167,13 @@ DEFOCML_OPENCL1F(j1)
 
 float OVLD ldexp(float f, int k);
 double OVLD ldexp(double f, int k);
-EXPORT float CL_NAME(ldexp)(float x, int k) { return ldexp(x, k); }
-EXPORT double CL_NAME(ldexp)(double x, int k) { return ldexp(x, k); }
+EXPORT float CL_NAME2(ldexp, f)(float x, int k) { return ldexp(x, k); }
+EXPORT double CL_NAME2(ldexp, d)(double x, int k) { return ldexp(x, k); }
 
 float OVLD lgamma(float f, PRIVATE_AS int *signp);
 double OVLD lgamma(double f, PRIVATE_AS int *signp);
-EXPORT float CL_NAME(lgamma)(float x) { int sign; return lgamma(x, &sign); }
-EXPORT double CL_NAME(lgamma)(double x) { int sign; return lgamma(x, &sign); }
+EXPORT float CL_NAME2(lgamma, f)(float x) { int sign; return lgamma(x, &sign); }
+EXPORT double CL_NAME2(lgamma, d)(double x) { int sign; return lgamma(x, &sign); }
 
 DEF_OPENCL1F(log10)
 DEF_OPENCL1F(log1p)
@@ -159,13 +184,13 @@ DEF_OPENCL1F(log)
 // modf
 float OVLD modf(float f, PRIVATE_AS float *i);
 double OVLD modf(double f, PRIVATE_AS double *i);
-float _Z13opencl_modf_ffPf(float x, DEFAULT_AS float *i) {
+EXPORT float CL_NAME2(modf, f)(float x, DEFAULT_AS float *i) {
   float tmp;
   float ret = modf(x, &tmp);
   *i = tmp;
   return ret;
 }
-double _Z13opencl_modf_ddPd(double x, DEFAULT_AS double *i) {
+EXPORT float CL_NAME2(modf, d)(double x, DEFAULT_AS double *i) {
   double tmp;
   double ret = modf(x, &tmp);
   *i = tmp;
@@ -178,10 +203,10 @@ DEFOCML_OPENCL2F(nextafter)
 
 float OVLD length(float4 f);
 double OVLD length(double4 f);
-EXPORT float CL_NAME(norm4d)(float x, float y, float z, float w) { float4 temp = (float4)(x, y, z, w); return length(temp); }
-EXPORT double CL_NAME(norm4d)(double x, double y, double z, double w) { double4 temp = (double4)(x, y, z, w); return length(temp); }
-EXPORT float CL_NAME(norm3d)(float x, float y, float z) { float4 temp = (float4)(x, y, z, 0.0f); return length(temp); }
-EXPORT double CL_NAME(norm3d)(double x, double y, double z) { double4 temp = (double4)(x, y, z, 0.0); return length(temp); }
+EXPORT float CL_NAME2(norm4d, f)(float x, float y, float z, float w) { float4 temp = (float4)(x, y, z, w); return length(temp); }
+EXPORT double CL_NAME2(norm4d, d)(double x, double y, double z, double w) { double4 temp = (double4)(x, y, z, w); return length(temp); }
+EXPORT float CL_NAME2(norm3d, f)(float x, float y, float z) { float4 temp = (float4)(x, y, z, 0.0f); return length(temp); }
+EXPORT double CL_NAME2(norm3d, d)(double x, double y, double z) { double4 temp = (double4)(x, y, z, 0.0); return length(temp); }
 
 
 // OCML ncdf / ncdfinv
@@ -196,13 +221,13 @@ DEFOCML_OPENCL1F(rcbrt)
 // remquo
 float OVLD remquo(float x,   float y,  PRIVATE_AS int *quo);
 double OVLD remquo(double x, double y, PRIVATE_AS int *quo);
-float _Z15opencl_remquo_fffPi(float x, float y, DEFAULT_AS int *quo) {
+EXPORT float CL_NAME2(remquo, f)(float x, float y, DEFAULT_AS int *quo) {
   int tmp;
   float rem = remquo(x, y, &tmp);
   *quo = tmp;
   return rem;
 }
-double _Z15opencl_remquo_dddPi(double x, double y, DEFAULT_AS int *quo) {
+EXPORT float CL_NAME2(remquo, d)(double x, double y, DEFAULT_AS int *quo) {
   int tmp;
   double rem = remquo(x, y, &tmp);
   *quo = tmp;
@@ -218,10 +243,10 @@ double OVLD rlen4(double4 f);
 float OVLD rlen3(float3 f);
 double OVLD rlen3(double3 f);
 
-EXPORT float CL_NAME(rnorm4d)(float x, float y, float z, float w) { float4 temp = (float4)(x, y, z, w); return rlen4(temp); }
-EXPORT double CL_NAME(rnorm4d)(double x, double y, double z, double w) { double4 temp = (double4)(x, y, z, w); return rlen4(temp); }
-EXPORT float CL_NAME(rnorm3d)(float x, float y, float z) { float3 temp = (float3)(x, y, z); return rlen3(temp); }
-EXPORT double CL_NAME(rnorm3d)(double x, double y, double z) { double3 temp = (double3)(x, y, z); return rlen3(temp); }
+EXPORT float CL_NAME2(rnorm4d, f)(float x, float y, float z, float w) { float4 temp = (float4)(x, y, z, w); return rlen4(temp); }
+EXPORT double CL_NAME2(rnorm4d, d)(double x, double y, double z, double w) { double4 temp = (double4)(x, y, z, w); return rlen4(temp); }
+EXPORT float CL_NAME2(rnorm3d, f)(float x, float y, float z) { float3 temp = (float3)(x, y, z); return rlen3(temp); }
+EXPORT double CL_NAME2(rnorm3d, d)(double x, double y, double z) { double3 temp = (double3)(x, y, z); return rlen3(temp); }
 
 
 DEF_OPENCL1F(round)
@@ -230,8 +255,8 @@ DEF_OPENCL1F(rsqrt)
 // OCML
 float OVLD scalbn(float f, int k);
 double OVLD scalbn(double f, int k);
-EXPORT float CL_NAME(scalbn)(float x, int k) { return scalbn(x, k); }
-EXPORT double CL_NAME(scalbn)(double x, int k) { return scalbn(x, k); }
+EXPORT float CL_NAME2(scalbn, f)(float x, int k) { return scalbn(x, k); }
+EXPORT double CL_NAME2(scalbn, d)(double x, int k) { return scalbn(x, k); }
 // OCML
 DEFOCML_OPENCL2F(scalb)
 
@@ -252,14 +277,14 @@ DEF_OPENCL1F(trunc)
 float OVLD sincos(float x, PRIVATE_AS float *cosval);
 double OVLD sincos(double x, PRIVATE_AS double *cosval);
 
-float _Z15opencl_sincos_ffPf(float x, DEFAULT_AS float *cos) {
+EXPORT float CL_NAME2(sincos, f)(float x, DEFAULT_AS float *cos) {
   PRIVATE_AS float tmp;
   PRIVATE_AS float sin = sincos(x, &tmp);
   *cos = tmp;
   return sin;
 }
 
-double _Z15opencl_sincos_ddPd(double x, DEFAULT_AS double *cos) {
+EXPORT float CL_NAME2(sincos, d)(double x, DEFAULT_AS double *cos) {
   PRIVATE_AS double tmp;
   PRIVATE_AS double sin = sincos(x, &tmp);
   *cos = tmp;
@@ -285,13 +310,12 @@ DEF_OPENCL1F_NATIVE(log)
 
 /* other */
 
-OVLD void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
+EXPORT void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
 
 /**********************************************************************/
 
-#define DEF_OPENCL_ATOMIC2(NAME, LEN)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, _i, LEN,                                      \
-                           PVii)(volatile DEFAULT_AS int *address, int i) {    \
+#define DEF_OPENCL_ATOMIC2(NAME)                                          \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(volatile DEFAULT_AS int *address, int i) {    \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
       return atomic_##NAME(gi, i);                                             \
@@ -303,7 +327,7 @@ OVLD void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, _u, LEN, PVjj)(                      \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                      \
       volatile DEFAULT_AS unsigned int *address, unsigned int ui) {            \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
@@ -316,7 +340,7 @@ OVLD void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, _l, LEN, PVyy)(                \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                \
       volatile DEFAULT_AS unsigned long long *address,                         \
       unsigned long long ull) {                                                \
     volatile global ulong *gi =                                                \
@@ -333,18 +357,17 @@ OVLD void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
     }                                                                          \
   };
 
-DEF_OPENCL_ATOMIC2(add, 19)
-DEF_OPENCL_ATOMIC2(sub, 19)
-DEF_OPENCL_ATOMIC2(xchg, 20)
-DEF_OPENCL_ATOMIC2(min, 19)
-DEF_OPENCL_ATOMIC2(max, 19)
-DEF_OPENCL_ATOMIC2(and, 19)
-DEF_OPENCL_ATOMIC2(or, 18)
-DEF_OPENCL_ATOMIC2 (xor, 19)
+DEF_OPENCL_ATOMIC2(add)
+DEF_OPENCL_ATOMIC2(sub)
+DEF_OPENCL_ATOMIC2(xchg)
+DEF_OPENCL_ATOMIC2(min)
+DEF_OPENCL_ATOMIC2(max)
+DEF_OPENCL_ATOMIC2(and)
+DEF_OPENCL_ATOMIC2(or)
+DEF_OPENCL_ATOMIC2(xor)
 
-#define DEF_OPENCL_ATOMIC1(NAME, LEN)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, _i, LEN,                                      \
-                           PVi)(volatile DEFAULT_AS int *address) {            \
+#define DEF_OPENCL_ATOMIC1(NAME)                                          \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(volatile DEFAULT_AS int *address) {            \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
@@ -353,7 +376,7 @@ DEF_OPENCL_ATOMIC2 (xor, 19)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, _u, LEN, PVj)(                       \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                       \
       volatile DEFAULT_AS unsigned int *address) {                             \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
@@ -363,7 +386,7 @@ DEF_OPENCL_ATOMIC2 (xor, 19)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, _l, LEN, PVy)(                 \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                 \
       volatile DEFAULT_AS unsigned long long *address) {                       \
     volatile global ulong *gi =                                                \
         to_global((volatile DEFAULT_AS ulong *)address);                       \
@@ -375,11 +398,11 @@ DEF_OPENCL_ATOMIC2 (xor, 19)
     return 0;                                                                  \
   };
 
-DEF_OPENCL_ATOMIC1(inc, 19)
-DEF_OPENCL_ATOMIC1(dec, 19)
+DEF_OPENCL_ATOMIC1(inc)
+DEF_OPENCL_ATOMIC1(dec)
 
-#define DEF_OPENCL_ATOMIC3(NAME, LEN)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, _i, LEN, PViii)(                              \
+#define DEF_OPENCL_ATOMIC3(NAME)                                          \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(                              \
       volatile DEFAULT_AS int *address, int cmp, int val) {                    \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
@@ -389,7 +412,7 @@ DEF_OPENCL_ATOMIC1(dec, 19)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, _u, LEN, PVjjj)(                     \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                     \
       volatile DEFAULT_AS unsigned int *address, unsigned int cmp,             \
       unsigned int val) {                                                      \
     volatile global uint *gi = to_global(address);                             \
@@ -400,7 +423,7 @@ DEF_OPENCL_ATOMIC1(dec, 19)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, _l, LEN, PVyyy)(               \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(               \
       volatile DEFAULT_AS unsigned long long *address, unsigned long long cmp, \
       unsigned long long val) {                                                \
     volatile global ulong *gi =                                                \
@@ -413,11 +436,11 @@ DEF_OPENCL_ATOMIC1(dec, 19)
     return 0;                                                                  \
   };
 
-DEF_OPENCL_ATOMIC3(cmpxchg, 23)
+DEF_OPENCL_ATOMIC3(cmpxchg)
 
 /* This code adapted from AMD's HIP sources */
 
-OVLD float atomic_add_f(volatile local float *address, float val) {
+static OVLD float atomic_add_f(volatile local float *address, float val) {
   volatile local uint *uaddr = (volatile local uint *)address;
   uint old = *uaddr;
   uint r;
@@ -430,7 +453,7 @@ OVLD float atomic_add_f(volatile local float *address, float val) {
   return as_float(r);
 }
 
-OVLD double atom_add_d(volatile local double *address, double val) {
+static OVLD double atom_add_d(volatile local double *address, double val) {
   volatile local ulong *uaddr = (volatile local ulong *)address;
   ulong old = *uaddr;
   ulong r;
@@ -443,11 +466,11 @@ OVLD double atom_add_d(volatile local double *address, double val) {
   return as_double(r);
 }
 
-OVLD float atomic_exch_f(volatile local float *address, float val) {
+static OVLD float atomic_exch_f(volatile local float *address, float val) {
   return as_float(atomic_xchg((volatile local uint *)(address), as_uint(val)));
 }
 
-OVLD float atomic_add_f(volatile global float *address, float val) {
+static OVLD float atomic_add_f(volatile global float *address, float val) {
   volatile global uint *uaddr = (volatile global uint *)address;
   uint old = *uaddr;
   uint r;
@@ -460,7 +483,7 @@ OVLD float atomic_add_f(volatile global float *address, float val) {
   return as_float(r);
 }
 
-OVLD double atom_add_d(volatile global double *address, double val) {
+static OVLD double atom_add_d(volatile global double *address, double val) {
   volatile global ulong *uaddr = (volatile global ulong *)address;
   ulong old = *uaddr;
   ulong r;
@@ -473,12 +496,11 @@ OVLD double atom_add_d(volatile global double *address, double val) {
   return as_double(r);
 }
 
-OVLD float atomic_exch_f(volatile global float *address, float val) {
+static OVLD float atomic_exch_f(volatile global float *address, float val) {
   return as_float(atomic_xchg((volatile global uint *)(address), as_uint(val)));
 }
 
-float CL_NAME_MANGLED_ATOM(add, _f, 19,
-                           PVff)(volatile DEFAULT_AS float *address,
+EXPORT float CL_NAME_MANGLED_ATOM(add, f)(volatile DEFAULT_AS float *address,
                                  float val) {
   volatile global float *gi = to_global(address);
   if (gi)
@@ -489,8 +511,7 @@ float CL_NAME_MANGLED_ATOM(add, _f, 19,
   return 0;
 }
 
-double CL_NAME_MANGLED_ATOM(add, _d, 19,
-                            PVdd)(volatile DEFAULT_AS double *address,
+EXPORT double CL_NAME_MANGLED_ATOM(add, d)(volatile DEFAULT_AS double *address,
                                   double val) {
   volatile global double *gi = to_global((volatile DEFAULT_AS double *)address);
   if (gi)
@@ -501,8 +522,7 @@ double CL_NAME_MANGLED_ATOM(add, _d, 19,
   return 0;
 }
 
-float CL_NAME_MANGLED_ATOM(exch, _f, 20,
-                           PVff)(volatile DEFAULT_AS float *address,
+EXPORT float CL_NAME_MANGLED_ATOM(exch, f)(volatile DEFAULT_AS float *address,
                                  float val) {
   volatile global float *gi = to_global(address);
   if (gi)
@@ -517,48 +537,49 @@ float CL_NAME_MANGLED_ATOM(exch, _f, 20,
 
 int OVLD intel_sub_group_shuffle(int var, uint srcLane);
 float OVLD intel_sub_group_shuffle(float var, uint srcLane);
-OVLD int CL_NAME(shfl_i)(int var, int srcLane) {
-  return intel_sub_group_shuffle(var, srcLane);
-};
-OVLD float CL_NAME(shfl_f)(float var, int srcLane) {
-  return intel_sub_group_shuffle(var, srcLane);
-};
-
 int OVLD intel_sub_group_shuffle_xor(int var, uint value);
 float OVLD intel_sub_group_shuffle_xor(float var, uint value);
-OVLD int CL_NAME(shfl_xor_i)(int var, int value) {
+int OVLD intel_sub_group_shuffle_up(int prev, int curr, uint delta);
+float OVLD intel_sub_group_shuffle_up(float prev, float curr, uint delta);
+int OVLD intel_sub_group_shuffle_down(int prev, int curr, uint delta);
+float OVLD intel_sub_group_shuffle_down(float prev, float curr, uint delta);
+
+EXPORT int CL_NAME2(shfl, i)(int var, int srcLane) {
+  return intel_sub_group_shuffle(var, srcLane);
+};
+EXPORT float CL_NAME2(shfl, f)(float var, int srcLane) {
+  return intel_sub_group_shuffle(var, srcLane);
+};
+
+EXPORT int CL_NAME2(shfl_xor, i)(int var, int value) {
   return intel_sub_group_shuffle_xor(var, value);
 };
-OVLD float CL_NAME(shfl_xor_f)(float var, int value) {
+EXPORT float CL_NAME2(shfl_xor, f)(float var, int value) {
   return intel_sub_group_shuffle_xor(var, value);
 };
 
-int OVLD intel_sub_group_shuffle_up(int prev, int curr, uint delta);
-float OVLD intel_sub_group_shuffle_up(float prev, float curr, uint delta);
-OVLD int CL_NAME(shfl_up_i)(int var, unsigned int delta) {
+EXPORT int CL_NAME2(shfl_up, i)(int var, unsigned int delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
 };
-OVLD float CL_NAME(shfl_up_f)(float var, unsigned int delta) {
+EXPORT float CL_NAME2(shfl_up, f)(float var, unsigned int delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
 };
 
-int OVLD intel_sub_group_shuffle_down(int prev, int curr, uint delta);
-float OVLD intel_sub_group_shuffle_down(float prev, float curr, uint delta);
-OVLD int CL_NAME(shfl_down_i)(int var, unsigned int delta) {
+EXPORT int CL_NAME2(shfl_down, i)(int var, unsigned int delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
 };
-OVLD float CL_NAME(shfl_down_f)(float var, unsigned int delta) {
+EXPORT float CL_NAME2(shfl_down, f)(float var, unsigned int delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
 };
 
-int CL_NAME(group_all)(int pred) { return sub_group_all(pred); }
 
+int CL_NAME(group_all)(int pred) { return sub_group_all(pred); }
 int CL_NAME(group_any)(int pred) { return sub_group_any(pred); }
