@@ -177,31 +177,59 @@ private:
     Argument *last_arg = NewF->arg_end();
     --last_arg;
 
-    IRBuilder<> B(M.getContext());
-    B.SetInsertPoint(NewF->getEntryBlock().getFirstNonPHI());
+    // GEPs into arrays use an additional index
+    // (e.g. GEP for some_array[5] has two indexes, not one)
+    // dynamic local variable is always an array;
+    // since we're replacing it with simple pointer to local memory,
+    // we need to remove the first index from GEPs.
+    bool changedGEP;
+    do {
+      changedGEP = false;
+      for (auto U : GV->users()) {
+        if (!isValueUsedByFunction(U, NewF)) {
+          continue;
+        }
+        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(U);
+        if (GEP != nullptr) {
+          std::vector<Value *> NewIdxList;
+          assert(GEP->getNumIndices() > 1);
+          auto i = GEP->idx_begin();
+          ++i; // skip first
+          for (; i < GEP->idx_end(); ++i) {
+            NewIdxList.push_back(*i);
+          }
 
-    for (auto U : GV->users()) {
-      if (!isValueUsedByFunction(U, NewF))
-        continue;
-      PointerType *UTy = dyn_cast<PointerType>(U->getType());
-      if (UTy != sharedMemTy) {
-        Value *CastSHM = B.CreatePointerBitCastOrAddrSpaceCast(last_arg, UTy,
-                                                               "castSharedMem");
-        U->replaceAllUsesWith(CastSHM);
-      } else {
-        U->replaceAllUsesWith(last_arg);
+          GetElementPtrInst *ReplGEP = llvm::GetElementPtrInst::Create(
+              ELT, last_arg, NewIdxList, "replacementGEP", GEP);
+          GEP->replaceAllUsesWith(ReplGEP);
+          GEP->eraseFromParent();
+          changedGEP = true;
+          break;
+        }
       }
+    } while (changedGEP);
+
+    // if the previous step failed to remove all uses,
+    // create an additional pointer indirection by creating an alloca,
+    // and replace all dynamic shared mem uses with it.
+    // could be less efficient but should always work.
+    if (GV->getNumUses() > 0) {
+
+      IRBuilder<> B(M.getContext());
+      B.SetInsertPoint(NewF->getEntryBlock().getFirstNonPHI());
+
+      AllocaInst *Alloca1 =
+          B.CreateAlloca(sharedMemTy, 0, "allocaSharedMemPtr");
+
+      StoreInst *Store1 = B.CreateStore(last_arg, Alloca1);
+
+      Value *CastSHM = B.CreatePointerBitCastOrAddrSpaceCast(Alloca1, GVT,
+                                                             "castedSharedMem");
+      GV->replaceAllUsesWith(CastSHM);
     }
 
-    // replaceAllUsesWith does not actually replace all uses.
-    // Bitcasts created by breakConstantExpressions are not removed;
-    // have to do it manually here
-    for (auto U : GV->users()) {
-      assert(!isValueUsedByFunction(U, NewF));
-      Instruction *CC = dyn_cast<Instruction>(U);
-      assert(CC != nullptr);
-      CC->eraseFromParent();
-    }
+    assert(GV->getNumUses() == 0 && "Some uses still remain - bug!");
+    GV->eraseFromParent();
 
     return NewF;
   }
@@ -237,8 +265,6 @@ private:
 
         Function *NewF = cloneFunctionWithDynMemArg(F, M, GV);
         assert(NewF && "cloning failed");
-
-        GV->eraseFromParent();
 
         Modified = true;
       }
