@@ -76,6 +76,30 @@ uint64_t ClEvent::getFinishTime() {
 
 /********************************/
 
+static int setLocalSize(size_t shared, OCLFuncInfo *FuncInfo,
+                        cl_kernel kernel) {
+
+  int err = CL_SUCCESS;
+
+  if (shared > 0) {
+    logDebug("setLocalMemSize to {}\n", shared);
+    size_t LastArgIdx = FuncInfo->ArgTypeInfo.size() - 1;
+    if (FuncInfo->ArgTypeInfo[LastArgIdx].space != OCLSpace::Local) {
+      // this can happen if for example the llvm optimizes away
+      // the dynamic local variable
+      logWarn("Can't set the dynamic local size, "
+              "because the kernel doesn't use any local memory.\n");
+    } else {
+      err = ::clSetKernelArg(kernel, LastArgIdx, shared, nullptr);
+      if (err != CL_SUCCESS) {
+        logError("clSetKernelArg() failed to set dynamic local size!\n");
+      }
+    }
+  }
+
+  return err;
+}
+
 bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
   int err = 0;
   Name = Kernel.getInfo<CL_KERNEL_FUNCTION_NAME>(&err);
@@ -139,17 +163,7 @@ int ClKernel::setAllArgs(void **args, size_t shared) {
     }
   }
 
-  if (shared > 0) {
-    err = ::clSetKernelArg(Kernel(),
-                           FuncInfo->ArgTypeInfo.size()-1,
-                           shared, nullptr);
-    if (err != CL_SUCCESS) {
-      logError("clSetKernelArg() failed to set dynamic local size!\n");
-      return err;
-    }
-  }
-
-  return 0;
+  return setLocalSize(shared, FuncInfo, Kernel());
 }
 
 int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
@@ -169,7 +183,6 @@ int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
         logDebug("clSetKernelArgSVMPointer failed with error {}\n", err);
         return err;
       }
-
     } else {
       logDebug("setArg {} SIZE {}\n", i, ai.size);
       err = ::clSetKernelArg(Kernel(), i, ai.size, p);
@@ -182,17 +195,7 @@ int ClKernel::setAllArgs(void *args, size_t size, size_t shared) {
     p = (char *)p + ai.size;
   }
 
-  if (shared > 0) {
-    err = ::clSetKernelArg(Kernel(),
-                           FuncInfo->ArgTypeInfo.size()-1,
-                           shared, nullptr);
-    if (err != CL_SUCCESS) {
-      logError("clSetKernelArg() failed to set dynamic local size!\n");
-      return err;
-    }
-  }
-
-  return 0;
+  return setLocalSize(shared, FuncInfo, Kernel());
 }
 
 /********************************/
@@ -639,18 +642,7 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
     }
   }
 
-  if (SharedMem > 0) {
-    err = ::clSetKernelArg(kernel->get().get(),
-                     (FuncInfo->ArgTypeInfo.size()-1),
-                     this->SharedMem, nullptr);
-    if (err != CL_SUCCESS) {
-      logError("clSetKernelArg() failed to set dynamic local size!\n");
-      return err;
-    }
-  }
-
-
-  return CL_SUCCESS;
+  return setLocalSize(SharedMem, FuncInfo, kernel->get().get());
 }
 
 /***********************************************************************/
