@@ -1105,6 +1105,7 @@ void ClDevice::setupProperties(int index) {
   Properties.canMapHostMemory = 1;
   Properties.gcnArch = 0;
   Properties.integrated = 0;
+  Properties.maxSharedMemoryPerMultiProcessor = 0;
 }
 
 ClDevice::ClDevice(cl::Device d, cl::Platform p, hipDevice_t index) {
