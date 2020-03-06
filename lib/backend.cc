@@ -1164,6 +1164,7 @@ bool ClDevice::reserveMem(size_t bytes) {
     TotalUsedMem += bytes;
     return true;
   } else {
+    logError("Can't allocate {} bytes of memory\n", bytes);
     return false;
   }
 }

@@ -31,7 +31,7 @@ static ClContext *getTlsDefaultCtx() {
 #define ERROR_IF(cond, err)                                                    \
   if (cond)                                                                    \
     do {                                                                       \
-      logError("{} : {}", #cond, err);                                         \
+      logError("Error {} at {}:{} code {}", err, __FILE__, __LINE__, #cond);   \
       tls_LastError = err;                                                     \
       return err;                                                              \
   } while (0)
