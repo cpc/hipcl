@@ -120,10 +120,12 @@ else()
   set(DEFAULT_BUILD_TYPE "RelWithDebInfo")
 endif()
 
-if(NOT DEFINED CMAKE_BUILD_TYPE)
+if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "CMake build type not set, setting to ${DEFAULT_BUILD_TYPE}")
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "CMake build type" FORCE)
 endif()
+
+message(STATUS "CMake build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -144,11 +146,18 @@ add_subdirectory(llvm_passes)
 
 get_target_property(HIPCL_CFLAGS_PRIV "hipcl" COMPILE_OPTIONS)
 message(STATUS "hipcl private compile options: ${HIPCL_CFLAGS_PRIV}")
+get_target_property(HIPCL_IDIR_PRIV "hipcl" INCLUDE_DIRECTORIES)
+message(STATUS "hipcl private include directories: ${HIPCL_IDIR_PRIV}")
+
+
 get_target_property(HIPCL_CFLAGS_IFC "hipcl" INTERFACE_COMPILE_OPTIONS)
 message(STATUS "hipcl public compile options: ${HIPCL_CFLAGS_IFC}")
+get_target_property(HIPCL_IDIR_IFC "hipcl" INTERFACE_INCLUDE_DIRECTORIES)
+message(STATUS "hipcl public include directories: ${HIPCL_IDIR_IFC}")
 
+string(REPLACE "${CMAKE_INSTALL_PREFIX}" "-I${CMAKE_INSTALL_PREFIX}" HIPCL_IDIR_IFC "${HIPCL_IDIR_IFC}")
 # HIPCL_CXX_OPTIONS is what's reported by hipcl-config.
-string(REPLACE ";" " " HIPCL_CXX_OPTIONS "${HIPCL_CFLAGS_IFC}")
+string(REPLACE ";" " " HIPCL_CXX_OPTIONS "${HIPCL_CFLAGS_IFC};${HIPCL_IDIR_IFC}")
 
 # The hipcl "COMPILE_OPTIONS" target properties contain some generator expressions;
 # we have to get rid of those for hipcl_config.h
