@@ -74,6 +74,7 @@ install(FILES
         "${CMAKE_SOURCE_DIR}/include/hip/hipcl.hh"
         "${CMAKE_SOURCE_DIR}/include/hip/hipcl_mathlib.hh"
         "${CMAKE_SOURCE_DIR}/include/hip/hip_fatbin.h"
+        "${CMAKE_SOURCE_DIR}/include/hip/hip_fp16.h"
         "${CMAKE_SOURCE_DIR}/include/hip/hip_runtime.h"
         "${CMAKE_SOURCE_DIR}/include/hip/hip_vector_types.h"
   DESTINATION "${HIPCL_INC_DIR}/hip")

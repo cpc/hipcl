@@ -10,5 +10,7 @@
 
 #include <hip/hip_vector_types.h>
 
+#include <hip/hip_fp16.h>
+
 #endif
 
