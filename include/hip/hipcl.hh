@@ -575,6 +575,7 @@ enum hipComputeMode {
   hipComputeModeExclusiveProcess = 3
 };
 
+
 /* implementation details */
 
 typedef int hipDevice_t;
@@ -754,6 +755,33 @@ typedef struct dim3 {
       : x(_x), y(_y), z(_z){};
 #endif
 } dim3;
+
+/**
+ * @brief: C++ wrapper for hipMalloc
+ *
+ * Perform automatic type conversion to eliminate need for excessive typecasting (ie void**)
+ *
+ * __HIP_DISABLE_CPP_FUNCTIONS__ macro can be defined to suppress these
+ * wrappers. It is useful for applications which need to obtain decltypes of
+ * HIP runtime APIs.
+ *
+ * @see hipMalloc
+ */
+#if defined(__cplusplus) && !defined(__HIP_DISABLE_CPP_FUNCTIONS__)
+template <class T>
+static inline hipError_t hipMalloc(T** devPtr, size_t size) {
+    return hipMalloc((void**)devPtr, size);
+}
+
+// Provide an override to automatically typecast the pointer type from void**, and also provide a
+// default for the flags.
+template <class T>
+static inline hipError_t hipHostMalloc(T** ptr, size_t size,
+                                       unsigned int flags = hipHostMallocDefault) {
+    return hipHostMalloc((void**)ptr, size, flags);
+}
+#endif
+
 
 //-------------------------------------------------------------------------------------------------
 
