@@ -10,7 +10,7 @@ if(VERBOSE)
   add_compile_options("-v")
 endif()
 
-# ARGN = sources
+# ARGN = test args
 function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS SOURCE)
 
     set(TEST_EXEC_ARGS ${ARGN})
@@ -36,6 +36,29 @@ function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS SOURCE)
 
 
 endfunction()
+
+
+# ARGN = sources
+function(add_hipcl_binary EXEC_NAME)
+
+    set(SOURCES ${ARGN})
+    set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
+
+    add_executable("${EXEC_NAME}" ${SOURCES})
+
+    set_target_properties("${EXEC_NAME}" PROPERTIES CXX_STANDARD_REQUIRED ON)
+
+    add_dependencies("${EXEC_NAME}" "kernellib_bc")
+
+    target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
+
+    install(TARGETS "${EXEC_NAME}"
+            RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
+
+endfunction()
+
+
+
 
 set(SAMPLES
     hipmath
