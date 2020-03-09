@@ -12,13 +12,18 @@
  * the counterpart to this file, compiled in OpenCL mode, is mathlib.cl
  */
 
+#include <algorithm>
+#include <limits>
+
 #if defined(__HIP_DEVICE_COMPILE__)
+#define __DEVICE__ static __device__
 #define EXPORT static inline __device__
 #define OVLD __attribute__((overloadable)) __device__
 #define NON_OVLD __device__
 #define GEN_NAME(N) opencl_##N
 #define GEN_NAME2(N, S) opencl__##N##_##S
 #else
+#define __DEVICE__ extern __device__
 #define EXPORT extern __device__
 #define NON_OVLD
 #define OVLD
@@ -807,9 +812,134 @@ EXPORT long long abs(long long x) { return llabs(x); }
 #endif
 // END INTEGER
 
-#if defined(__cplusplus)
 EXPORT float fma(float x, float y, float z) { return fmaf(x, y, z); }
-#endif
+
+EXPORT api_half fma(api_half x, api_half y, api_half z) {
+  return fma_h(x, y, z);
+}
+
+#pragma push_macro("__DEF_FLOAT_FUN")
+#pragma push_macro("__DEF_FLOAT_FUN2")
+#pragma push_macro("__DEF_FLOAT_FUN2I")
+#pragma push_macro("__HIP_OVERLOAD")
+#pragma push_macro("__HIP_OVERLOAD2")
+
+// __hip_enable_if::type is a type function which returns __T if __B is true.
+template <bool __B, class __T = void> struct __hip_enable_if {};
+
+template <class __T> struct __hip_enable_if<true, __T> { typedef __T type; };
+
+// __HIP_OVERLOAD1 is used to resolve function calls with integer argument to
+// avoid compilation error due to ambibuity. e.g. floor(5) is resolved with
+// floor(double).
+#define __HIP_OVERLOAD1(__retty, __fn)                                         \
+  template <typename __T>                                                      \
+  __DEVICE__ typename __hip_enable_if<std::numeric_limits<__T>::is_integer,    \
+                                      __retty>::type                           \
+  __fn(__T __x) {                                                              \
+    return ::__fn((double)__x);                                                \
+  }
+
+// __HIP_OVERLOAD2 is used to resolve function calls with mixed float/double
+// or integer argument to avoid compilation error due to ambibuity. e.g.
+// max(5.0f, 6.0) is resolved with max(double, double).
+#define __HIP_OVERLOAD2(__retty, __fn)                                         \
+  template <typename __T1, typename __T2>                                      \
+  __DEVICE__                                                                   \
+      typename __hip_enable_if<std::numeric_limits<__T1>::is_specialized &&    \
+                                   std::numeric_limits<__T2>::is_specialized,  \
+                               __retty>::type                                  \
+      __fn(__T1 __x, __T2 __y) {                                               \
+    return __fn((double)__x, (double)__y);                                     \
+  }
+
+// Define cmath functions with float argument and returns float.
+#define __DEF_FUN1(retty, func)                                                \
+  EXPORT                                                                       \
+  float func(float x) { return func##f(x); }                                   \
+  __HIP_OVERLOAD1(retty, func)
+
+// Define cmath functions with float argument and returns retty.
+#define __DEF_FUNI(retty, func)                                                \
+  EXPORT                                                                       \
+  retty func(float x) { return func##f(x); }                                   \
+  __HIP_OVERLOAD1(retty, func)
+
+// define cmath functions with two float arguments.
+#define __DEF_FUN2(retty, func)                                                \
+  EXPORT                                                                       \
+  float func(float x, float y) { return func##f(x, y); }                       \
+  __HIP_OVERLOAD2(retty, func)
+
+__DEF_FUN1(double, acos)
+__DEF_FUN1(double, acosh)
+__DEF_FUN1(double, asin)
+__DEF_FUN1(double, asinh)
+__DEF_FUN1(double, atan)
+__DEF_FUN2(double, atan2);
+__DEF_FUN1(double, atanh)
+__DEF_FUN1(double, cbrt)
+__DEF_FUN1(double, ceil)
+__DEF_FUN2(double, copysign);
+__DEF_FUN1(double, cos)
+__DEF_FUN1(double, cosh)
+__DEF_FUN1(double, erf)
+__DEF_FUN1(double, erfc)
+__DEF_FUN1(double, exp)
+__DEF_FUN1(double, exp2)
+__DEF_FUN1(double, expm1)
+__DEF_FUN1(double, fabs)
+__DEF_FUN2(double, fdim);
+__DEF_FUN1(double, floor)
+__DEF_FUN2(double, fmax);
+__DEF_FUN2(double, fmin);
+__DEF_FUN2(double, fmod);
+//__HIP_OVERLOAD1(int, fpclassify)
+__DEF_FUN2(double, hypot);
+__DEF_FUNI(int, ilogb)
+__HIP_OVERLOAD1(bool, isfinite)
+__HIP_OVERLOAD2(bool, isgreater);
+__HIP_OVERLOAD2(bool, isgreaterequal);
+__HIP_OVERLOAD1(bool, isinf);
+__HIP_OVERLOAD2(bool, isless);
+__HIP_OVERLOAD2(bool, islessequal);
+__HIP_OVERLOAD2(bool, islessgreater);
+__HIP_OVERLOAD1(bool, isnan);
+//__HIP_OVERLOAD1(bool, isnormal)
+__HIP_OVERLOAD2(bool, isunordered);
+__DEF_FUN1(double, lgamma)
+__DEF_FUN1(double, log)
+__DEF_FUN1(double, log10)
+__DEF_FUN1(double, log1p)
+__DEF_FUN1(double, log2)
+__DEF_FUN1(double, logb)
+__DEF_FUNI(long long, llrint)
+__DEF_FUNI(long long, llround)
+__DEF_FUNI(long, lrint)
+__DEF_FUNI(long, lround)
+__DEF_FUN1(double, nearbyint);
+__DEF_FUN2(double, nextafter);
+__DEF_FUN2(double, pow);
+__DEF_FUN2(double, remainder);
+__DEF_FUN1(double, rint);
+__DEF_FUN1(double, round);
+__HIP_OVERLOAD1(bool, signbit)
+__DEF_FUN1(double, sin)
+__DEF_FUN1(double, sinh)
+__DEF_FUN1(double, sqrt)
+__DEF_FUN1(double, tan)
+__DEF_FUN1(double, tanh)
+__DEF_FUN1(double, tgamma)
+__DEF_FUN1(double, trunc);
+
+// define cmath functions with a float and an integer argument.
+#define __DEF_FLOAT_FUN2I(func)                                                \
+  EXPORT                                                                       \
+  float func(float x, int y) { return func##f(x, y); }
+__DEF_FLOAT_FUN2I(scalbn)
+
+EXPORT int min(int arg1, int arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT int max(int arg1, int arg2) { return (arg1 > arg2) ? arg1 : arg2; }
 
 EXPORT float max(float x, float y) { return fmaxf(x, y); }
 
@@ -818,6 +948,15 @@ EXPORT double max(double x, double y) { return fmax(x, y); }
 EXPORT float min(float x, float y) { return fminf(x, y); }
 
 EXPORT double min(double x, double y) { return fmin(x, y); }
+
+__HIP_OVERLOAD2(double, max)
+__HIP_OVERLOAD2(double, min)
+
+#pragma pop_macro("__DEF_FLOAT_FUN")
+#pragma pop_macro("__DEF_FLOAT_FUN2")
+#pragma pop_macro("__DEF_FLOAT_FUN2I")
+#pragma pop_macro("__HIP_OVERLOAD")
+#pragma pop_macro("__HIP_OVERLOAD2")
 
 /**********************************************************************/
 
