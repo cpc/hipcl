@@ -17,6 +17,8 @@ set_target_properties(hipcl PROPERTIES
 
 target_link_libraries(hipcl ${SANITIZER_LIBS} ${PTHREAD_LIBRARY} ${OpenCL_LIBRARIES})
 
+add_dependencies("hipcl" "kernellib_bc")
+
 if(DEBUG)
     target_compile_definitions(hipcl PRIVATE "_GLIBCXX_DEBUG")
 endif()

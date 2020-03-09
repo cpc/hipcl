@@ -20,8 +20,6 @@ function(add_hipcl_test EXEC_NAME TEST_NAME TEST_PASS SOURCE)
 
     set_target_properties("${EXEC_NAME}" PROPERTIES CXX_STANDARD_REQUIRED ON)
 
-    add_dependencies("${EXEC_NAME}" "kernellib_bc")
-
     target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
 
     install(TARGETS "${EXEC_NAME}"
@@ -47,8 +45,6 @@ function(add_hipcl_binary EXEC_NAME)
     add_executable("${EXEC_NAME}" ${SOURCES})
 
     set_target_properties("${EXEC_NAME}" PROPERTIES CXX_STANDARD_REQUIRED ON)
-
-    add_dependencies("${EXEC_NAME}" "kernellib_bc")
 
     target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
 
