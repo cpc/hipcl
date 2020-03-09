@@ -314,6 +314,79 @@ EXPORT void CL_NAME(local_barrier)() { barrier(CLK_LOCAL_MEM_FENCE); }
 
 /**********************************************************************/
 
+EXPORT uint CL_NAME2(popcount, ui)(uint var) {
+  return popcount(var);
+}
+
+EXPORT ulong CL_NAME2(popcount, ul)(ulong var) {
+  return popcount(var);
+}
+
+
+EXPORT int CL_NAME2(clz, i)(int var) {
+  return clz(var);
+}
+
+EXPORT long CL_NAME2(clz, li)(long var) {
+  return clz(var);
+}
+
+EXPORT int CL_NAME2(ctz, i)(int var) {
+  return ctz(var);
+}
+
+EXPORT long CL_NAME2(ctz, li)(long var) {
+  return ctz(var);
+}
+
+
+EXPORT int CL_NAME2(hadd, i)(int x, int y) {
+  return hadd(x, y);
+}
+
+EXPORT int CL_NAME2(rhadd, i)(int x, int y) {
+  return hadd(x, y);
+}
+
+EXPORT uint CL_NAME2(uhadd, ui)(uint x, uint y) {
+  return hadd(x, y);
+}
+
+EXPORT uint CL_NAME2(urhadd, ui)(uint x, uint y) {
+  return hadd(x, y);
+}
+
+
+EXPORT int CL_NAME2(mul24, i)(int x, int y) {
+  return mul24(x, y);
+}
+
+EXPORT int CL_NAME2(mulhi, i)(int x, int y) {
+  return mul_hi(x, y);
+}
+
+EXPORT long CL_NAME2(mul64hi, li)(long x, long y) {
+  return mul_hi(x, y);
+}
+
+
+EXPORT uint CL_NAME2(umul24, ui)(uint x, uint y) {
+  return mul24(x, y);
+}
+
+EXPORT uint CL_NAME2(umulhi, ui)(uint x, uint y) {
+  return mul_hi(x, y);
+}
+
+EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
+  return mul_hi(x, y);
+}
+
+
+
+
+/**********************************************************************/
+
 #define DEF_OPENCL_ATOMIC2(NAME)                                          \
   int CL_NAME_MANGLED_ATOM(NAME, i)(volatile DEFAULT_AS int *address, int i) {    \
     volatile global int *gi = to_global(address);                              \
