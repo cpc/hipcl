@@ -1054,7 +1054,8 @@ hipError_t hipMemGetInfo(size_t *free, size_t *total) {
 
   auto device = cont->getDevice();
   *total = device->getGlobalMemSize();
-  *free = device->getUsedGlobalMem();
+  assert (device->getGlobalMemSize() > device->getUsedGlobalMem() );
+  *free =  device->getGlobalMemSize() - device->getUsedGlobalMem();
 
   RETURN(hipSuccess);
 }
