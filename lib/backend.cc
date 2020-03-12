@@ -1116,6 +1116,7 @@ ClDevice::ClDevice(cl::Device d, cl::Platform p, hipDevice_t index) {
   setupProperties(index);
 
   TotalUsedMem = 0;
+  MaxUsedMem = 0;
   GlobalMemSize = Properties.totalGlobalMem;
   PrimaryContext = nullptr;
 
@@ -1138,6 +1139,7 @@ void ClDevice::reset() {
 
 ClDevice::~ClDevice() {
   delete PrimaryContext;
+  logInfo("Max used memory on device {}: {} MB\n", Properties.name, (MaxUsedMem >> 20));
   logDebug("Destroy device {}\n", Properties.name);
   for (ClContext *C : Contexts) {
     delete C;
@@ -1155,6 +1157,7 @@ ClDevice::ClDevice(ClDevice &&rhs) {
   PrimaryContext = std::move(rhs.PrimaryContext);
   Contexts = std::move(rhs.Contexts);
   TotalUsedMem = rhs.TotalUsedMem;
+  MaxUsedMem = rhs.MaxUsedMem;
   GlobalMemSize = rhs.GlobalMemSize;
 }
 
@@ -1162,6 +1165,9 @@ bool ClDevice::reserveMem(size_t bytes) {
   std::lock_guard<std::mutex> Lock(DeviceMutex);
   if (bytes <= (GlobalMemSize - TotalUsedMem)) {
     TotalUsedMem += bytes;
+    if (TotalUsedMem > MaxUsedMem)
+      MaxUsedMem = TotalUsedMem;
+    logDebug("Currently used memory on dev {}: {} M\n", Index, (TotalUsedMem >> 20));
     return true;
   } else {
     logError("Can't allocate {} bytes of memory\n", bytes);
