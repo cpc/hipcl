@@ -865,15 +865,37 @@ EXPORT unsigned int __ffsll(long long int input) {
   return (input == 0 ? -1 : __ctzll(input)) + 1;
 }
 
-EXPORT unsigned int __brev(unsigned int input) {
-  // TODO
-  return 0;
+EXPORT unsigned int __brev(unsigned int a)
+{
+    uint32_t m;
+    a = (a >> 16) | (a << 16);                            // swap halfwords
+    m = 0x00FF00FFU;
+    a = ((a >> 8) & m) | ((a << 8) & ~m); // swap bytes
+    m = m^(m << 4);
+    a = ((a >> 4) & m) | ((a << 4) & ~m); // swap nibbles
+    m = m^(m << 2);
+    a = ((a >> 2) & m) | ((a << 2) & ~m);
+    m = m^(m << 1);
+    a = ((a >> 1) & m) | ((a << 1) & ~m);
+    return a;
 }
 
-EXPORT unsigned long long int __brevll(unsigned long long int input) {
-  // TODO
-  return 0;
+EXPORT unsigned long long int __brevll(unsigned long long int a) {
+    uint64_t m;
+    a = (a >> 32) | (a << 32);                            // swap words
+    m = 0x0000FFFF0000FFFFUL;
+    a = ((a >> 16) & m) | ((a << 16) & ~m); // swap halfwords
+    m = m^(m << 8);
+    a = ((a >> 8) & m) | ((a << 8) & ~m); // swap bytes
+    m = m^(m << 4);
+    a = ((a >> 4) & m) | ((a << 4) & ~m); // swap nibbles
+    m = m^(m << 2);
+    a = ((a >> 2) & m) | ((a << 2) & ~m);
+    m = m^(m << 1);
+    a = ((a >> 1) & m) | ((a << 1) & ~m);
+    return a;
 }
+
 
 EXPORT unsigned int __lastbit_u32_u64(uint64_t input) {
   return input == 0 ? -1 : __ctzll(input);
@@ -1009,8 +1031,7 @@ EXPORT unsigned int __sad(int x, int y, int z) {
   return x > y ? x - y + z : y - x + z;
 }
 EXPORT unsigned int __usad(unsigned int x, unsigned int y, unsigned int z) {
-  // TODO
-  return 0;
+  return x > y ? x - y + z : y - x + z;
 }
 
 
