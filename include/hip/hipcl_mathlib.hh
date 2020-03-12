@@ -37,6 +37,8 @@ THE SOFTWARE.
 #include <algorithm>
 #include <limits>
 
+#define NOOPT __attribute__((optnone))
+
 #if defined(__HIP_DEVICE_COMPILE__)
 #define __DEVICE__ static __device__
 #define EXPORT static inline __device__
@@ -865,7 +867,8 @@ EXPORT unsigned int __ffsll(long long int input) {
   return (input == 0 ? -1 : __ctzll(input)) + 1;
 }
 
-EXPORT unsigned int __brev(unsigned int a)
+// optimization tries to use llvm intrinsics here, but we don't want that
+EXPORT NOOPT unsigned int __brev(unsigned int a)
 {
     uint32_t m;
     a = (a >> 16) | (a << 16);                            // swap halfwords
@@ -880,7 +883,7 @@ EXPORT unsigned int __brev(unsigned int a)
     return a;
 }
 
-EXPORT unsigned long long int __brevll(unsigned long long int a) {
+EXPORT NOOPT unsigned long long int __brevll(unsigned long long int a) {
     uint64_t m;
     a = (a >> 32) | (a << 32);                            // swap words
     m = 0x0000FFFF0000FFFFUL;
