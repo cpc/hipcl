@@ -336,7 +336,7 @@ class ClDevice {
   hipDevice_t Index;
   hipDeviceProp_t Properties;
   std::map<hipDeviceAttribute_t, int> Attributes;
-  size_t TotalUsedMem, GlobalMemSize;
+  size_t TotalUsedMem, GlobalMemSize, MaxUsedMem;
 
   std::vector<std::string *> Modules;
   std::map<const void *, std::string *> HostPtrToModuleMap;
