@@ -10,6 +10,7 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 #define CL_HPP_MINIMUM_OPENCL_VERSION 200
 #include <CL/cl2.hpp>
+#include <CL/cl_ext_intel.h>
 
 #include "hip/hipcl.hh"
 
@@ -335,6 +336,7 @@ class ClDevice {
 
   hipDevice_t Index;
   hipDeviceProp_t Properties;
+  bool SupportsIntelDiag;
   std::map<hipDeviceAttribute_t, int> Attributes;
   size_t TotalUsedMem, GlobalMemSize, MaxUsedMem;
 
@@ -361,6 +363,7 @@ public:
   ClContext *newContext(unsigned int flags);
   bool addContext(ClContext *ctx);
   bool removeContext(ClContext *ctx);
+  bool supportsIntelDiag() const { return SupportsIntelDiag; }
 
   void registerModule(std::string *module);
   void unregisterModule(std::string *module);

@@ -647,11 +647,44 @@ int ExecItem::setupAllArgs(ClKernel *kernel) {
 
 /***********************************************************************/
 
+/* errinfo is a pointer to an error string.
+ * private_info and cb represent a pointer to binary data that is
+ * returned by the OpenCL implementation that can be used
+ * to log additional information helpful in debugging the error.
+ * user_data is a pointer to user supplied data.
+ */
+
+static void intel_driver_cb(
+    const char *errinfo,
+    const void *private_info,
+    size_t cb,
+    void *user_data) {
+
+    logDebug("INTEL DIAG: {}\n", errinfo);
+}
+
 ClContext::ClContext(ClDevice *D, unsigned f) {
   Device = D;
   Flags = f;
   int err;
-  Context = cl::Context(D->getDevice(), NULL, NULL, NULL, &err);
+
+  if (D->supportsIntelDiag()) {
+    logDebug("creating context with Intel Debugging\n");
+    cl_bitfield vl =
+            CL_CONTEXT_DIAGNOSTICS_LEVEL_BAD_INTEL
+            | CL_CONTEXT_DIAGNOSTICS_LEVEL_GOOD_INTEL
+            | CL_CONTEXT_DIAGNOSTICS_LEVEL_NEUTRAL_INTEL;
+    cl_context_properties props[] = {
+        CL_CONTEXT_SHOW_DIAGNOSTICS_INTEL,
+        (cl_context_properties)vl,
+        0 };
+    Context = cl::Context(D->getDevice(), props,
+                          intel_driver_cb, this,
+                          &err);
+  } else {
+    logDebug("creating context for dev: {}\n", D->getName());
+    Context = cl::Context(D->getDevice(), NULL, NULL, NULL, &err);
+  }
   assert(err == CL_SUCCESS);
 
   cl::CommandQueue CmdQueue(Context, Device->getDevice(),
@@ -1112,8 +1145,15 @@ ClDevice::ClDevice(cl::Device d, cl::Platform p, hipDevice_t index) {
   Device = d;
   Platform = p;
   Index = index;
+  SupportsIntelDiag = false;
 
   setupProperties(index);
+
+  std::string extensions = d.getInfo<CL_DEVICE_EXTENSIONS>();
+  if (extensions.find("cl_intel_driver_diag") != std::string::npos) {
+      logDebug("Intel debug extension supported\n");
+      SupportsIntelDiag = true;
+  }
 
   TotalUsedMem = 0;
   MaxUsedMem = 0;
