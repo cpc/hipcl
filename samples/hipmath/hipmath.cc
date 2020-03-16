@@ -25,6 +25,27 @@
 #define MIN_VAL 1923
 #define MIN_VAL_S "1923"
 
+__device__ __host__
+unsigned bitcast_u(float j) {
+  union {
+    float f;
+    unsigned u;
+  } a;
+  a.f = j;
+  return a.u;
+}
+
+__device__ __host__
+float bitcast_f(unsigned j) {
+  union {
+    float f;
+    unsigned u;
+  } a;
+  a.u = j;
+  return a.f;
+}
+
+
 __global__ void floatMath(float *In, float *Buf1Out, float *Buf2Out) {
   for (size_t i = 0; i < SINCOS_N; ++i)
     sincosf(In[i], Buf1Out + i, Buf2Out + i);
@@ -41,16 +62,9 @@ __global__ void floatMath(float *In, float *Buf1Out, float *Buf2Out) {
   Buf2Out[5] = (float)atomicMax((volatile int *)(In + 5), MIN_VAL);
   Buf2Out[6] = acosf(In[6]);
   Buf2Out[7] = acoshf(In[7]);
+  Buf2Out[8] = bitcast_f(__brev(bitcast_u(In[8])));
 }
 
-unsigned bitcast_u(float j) {
-  union {
-    float f;
-    unsigned u;
-  } a;
-  a.f = j;
-  return a.u;
-}
 
 
 int main() {
@@ -148,5 +162,8 @@ int main() {
 
     //    Buf2Out[5] = bitcast_uatomicMax((int*)(In+5), 1923);
     printf("ATOM MAX: %f, " MIN_VAL_S " =  %u \n", Out2N[5], bitcast_u(InN[5]));
+
+    printf("BREV in: %x out: %x\n", bitcast_u(InN[8]), bitcast_u(Out2N[8]) );
+
 }
 
