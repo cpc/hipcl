@@ -1218,92 +1218,88 @@ __HIP_OVERLOAD2(double, min)
 
 #define DEFOPENCL_ATOMIC2(HIPNAME, CLNAME)                                     \
   extern "C" {                                                                 \
-  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(volatile int *address, int i);    \
-  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME,                             \
-                                  u)(volatile unsigned int *address,           \
-                                     unsigned int ui);                         \
-  NON_OVLD unsigned long long                                                  \
-      GEN_NAME2(atomic_##CLNAME, l)(volatile unsigned long long *address,      \
-                                    unsigned long long ull);                   \
+  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(int *address, int i);             \
+  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME, u)(unsigned int *address,   \
+                                                      unsigned int ui);        \
+  NON_OVLD unsigned long long GEN_NAME2(atomic_##CLNAME,                       \
+                                        l)(unsigned long long *address,        \
+                                           unsigned long long ull);            \
   }                                                                            \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address, int val) {            \
+  EXPORT OVLD int atomic##HIPNAME(int *address, int val) {                     \
     return GEN_NAME2(atomic_##CLNAME, i)(address, val);                        \
   }                                                                            \
-  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int *address,     \
+  EXPORT OVLD unsigned int atomic##HIPNAME(unsigned int *address,              \
                                            unsigned int val) {                 \
     return GEN_NAME2(atomic_##CLNAME, u)(address, val);                        \
   }                                                                            \
-  EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address, unsigned long long val) {          \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(unsigned long long *address,  \
+                                                 unsigned long long val) {     \
     return GEN_NAME2(atomic_##CLNAME, l)(address, val);                        \
   }
 
 #define DEFOPENCL_ATOMIC1(HIPNAME, CLNAME)                                     \
   extern "C" {                                                                 \
-  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(volatile int *address);           \
-  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME,                             \
-                                  u)(volatile unsigned int *address);          \
-  NON_OVLD unsigned long long                                                  \
-      GEN_NAME2(atomic_##CLNAME, l)(volatile unsigned long long *address);     \
+  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(int *address);                    \
+  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME, u)(unsigned int *address);  \
+  NON_OVLD unsigned long long GEN_NAME2(atomic_##CLNAME,                       \
+                                        l)(unsigned long long *address);       \
   }                                                                            \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address) {                     \
+  EXPORT OVLD int atomic##HIPNAME(int *address) {                              \
     return GEN_NAME2(atomic_##CLNAME, i)(address);                             \
   }                                                                            \
-  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int *address) {   \
+  EXPORT OVLD unsigned int atomic##HIPNAME(unsigned int *address) {            \
     return GEN_NAME2(atomic_##CLNAME, u)(address);                             \
   }                                                                            \
   EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address) {                                  \
+      unsigned long long *address) {                                           \
     return GEN_NAME2(atomic_##CLNAME, l)(address);                             \
   }
 
 #define DEFOPENCL_ATOMIC3(HIPNAME, CLNAME)                                     \
   extern "C" {                                                                 \
-  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(volatile int *address, int cmp,   \
-                                             int val);                         \
-  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME,                             \
-                                  u)(volatile unsigned int *address,           \
-                                     unsigned int cmp, unsigned int val);      \
-  NON_OVLD unsigned long long                                                  \
-      GEN_NAME2(atomic_##CLNAME, l)(volatile unsigned long long *address,      \
-                                    unsigned long long cmp,                    \
-                                    unsigned long long val);                   \
+  NON_OVLD int GEN_NAME2(atomic_##CLNAME, i)(int *address, int cmp, int val);  \
+  NON_OVLD unsigned int GEN_NAME2(atomic_##CLNAME, u)(unsigned int *address,   \
+                                                      unsigned int cmp,        \
+                                                      unsigned int val);       \
+  NON_OVLD unsigned long long GEN_NAME2(atomic_##CLNAME,                       \
+                                        l)(unsigned long long *address,        \
+                                           unsigned long long cmp,             \
+                                           unsigned long long val);            \
   }                                                                            \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address, int cmp, int val) {   \
+  EXPORT OVLD int atomic##HIPNAME(int *address, int cmp, int val) {            \
     return GEN_NAME2(atomic_##CLNAME, i)(address, cmp, val);                   \
   }                                                                            \
   EXPORT OVLD unsigned int atomic##HIPNAME(                                    \
-      volatile unsigned int *address, unsigned int cmp, unsigned int val) {    \
+      unsigned int *address, unsigned int cmp, unsigned int val) {             \
     return GEN_NAME2(atomic_##CLNAME, u)(address, cmp, val);                   \
   }                                                                            \
-  EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address, unsigned long long cmp,            \
-      unsigned long long val) {                                                \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(unsigned long long *address,  \
+                                                 unsigned long long cmp,       \
+                                                 unsigned long long val) {     \
     return GEN_NAME2(atomic_##CLNAME, l)(address, cmp, val);                   \
   }
 
 #else
 
 #define DEFOPENCL_ATOMIC2(HIPNAME, CLNAME)                                     \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address, int val);             \
-  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int *address,     \
+  EXPORT OVLD int atomic##HIPNAME(int *address, int val);                      \
+  EXPORT OVLD unsigned int atomic##HIPNAME(unsigned int *address,              \
                                            unsigned int val);                  \
-  EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address, unsigned long long val);
+  EXPORT OVLD unsigned long long atomic##HIPNAME(unsigned long long *address,  \
+                                                 unsigned long long val);
 
 #define DEFOPENCL_ATOMIC1(HIPNAME, CLNAME)                                     \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address);                      \
-  EXPORT OVLD unsigned int atomic##HIPNAME(volatile unsigned int *address);    \
-  EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address);
+  EXPORT OVLD int atomic##HIPNAME(int *address);                               \
+  EXPORT OVLD unsigned int atomic##HIPNAME(unsigned int *address);             \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(unsigned long long *address);
 
 #define DEFOPENCL_ATOMIC3(HIPNAME, CLNAME)                                     \
-  EXPORT OVLD int atomic##HIPNAME(volatile int *address, int cmp, int val);    \
+  EXPORT OVLD int atomic##HIPNAME(int *address, int cmp, int val);             \
   EXPORT OVLD unsigned int atomic##HIPNAME(                                    \
-      volatile unsigned int *address, unsigned int cmp, unsigned int val);     \
-  EXPORT OVLD unsigned long long atomic##HIPNAME(                              \
-      volatile unsigned long long *address, unsigned long long cmp,            \
-      unsigned long long val);
+      unsigned int *address, unsigned int cmp, unsigned int val);              \
+  EXPORT OVLD unsigned long long atomic##HIPNAME(unsigned long long *address,  \
+                                                 unsigned long long cmp,       \
+                                                 unsigned long long val);
 
 #endif
 
@@ -1323,9 +1319,9 @@ DEFOPENCL_ATOMIC3(CAS, cmpxchg)
 
 #if defined(__HIP_DEVICE_COMPILE__)
 extern "C" {
-NON_OVLD float GEN_NAME2(atomic_add, f)(volatile float *address, float val);
-NON_OVLD double GEN_NAME2(atomic_add, d)(volatile double *address, double val);
-NON_OVLD float GEN_NAME2(atomic_exch, f)(volatile float *address, float val);
+NON_OVLD float GEN_NAME2(atomic_add, f)(float *address, float val);
+NON_OVLD double GEN_NAME2(atomic_add, d)(double *address, double val);
+NON_OVLD float GEN_NAME2(atomic_exch, f)(float *address, float val);
 }
 EXPORT float atomicAdd(float *address, float val) {
   return GEN_NAME2(atomic_add, f)(address, val);

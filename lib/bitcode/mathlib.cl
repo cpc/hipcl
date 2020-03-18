@@ -387,8 +387,8 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
 
 /**********************************************************************/
 
-#define DEF_OPENCL_ATOMIC2(NAME)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, i)(volatile DEFAULT_AS int *address, int i) {    \
+#define DEF_OPENCL_ATOMIC2(NAME)                                               \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(DEFAULT_AS int *address, int i) {          \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
       return atomic_##NAME(gi, i);                                             \
@@ -400,8 +400,8 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                      \
-      volatile DEFAULT_AS unsigned int *address, unsigned int ui) {            \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
+      DEFAULT_AS unsigned int *address, unsigned int ui) {                     \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
       return atomic_##NAME(gi, ui);                                            \
@@ -413,16 +413,16 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                \
-      volatile DEFAULT_AS unsigned long long *address,                         \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
+      DEFAULT_AS unsigned long long *address,                                  \
       unsigned long long ull) {                                                \
     volatile global ulong *gi =                                                \
-        to_global((volatile DEFAULT_AS ulong *)address);                       \
+        to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
       return atom_##NAME(gi, ull);                                             \
     else {                                                                     \
       volatile local ulong *li =                                               \
-          to_local((volatile DEFAULT_AS ulong *)address);                      \
+          to_local((DEFAULT_AS ulong *)address);                               \
       if (gi)                                                                  \
         return atom_##NAME(li, ull);                                           \
       else                                                                     \
@@ -439,8 +439,8 @@ DEF_OPENCL_ATOMIC2(and)
 DEF_OPENCL_ATOMIC2(or)
 DEF_OPENCL_ATOMIC2(xor)
 
-#define DEF_OPENCL_ATOMIC1(NAME)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, i)(volatile DEFAULT_AS int *address) {            \
+#define DEF_OPENCL_ATOMIC1(NAME)                                               \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(DEFAULT_AS int *address) {                 \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
@@ -449,8 +449,8 @@ DEF_OPENCL_ATOMIC2(xor)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                       \
-      volatile DEFAULT_AS unsigned int *address) {                             \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
+      DEFAULT_AS unsigned int *address) {                                      \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
@@ -459,13 +459,13 @@ DEF_OPENCL_ATOMIC2(xor)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                 \
-      volatile DEFAULT_AS unsigned long long *address) {                       \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
+      DEFAULT_AS unsigned long long *address) {                                \
     volatile global ulong *gi =                                                \
-        to_global((volatile DEFAULT_AS ulong *)address);                       \
+        to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
       return atom_##NAME(gi);                                                  \
-    volatile local ulong *li = to_local((volatile DEFAULT_AS ulong *)address); \
+    volatile local ulong *li = to_local((DEFAULT_AS ulong *)address);          \
     if (gi)                                                                    \
       return atom_##NAME(li);                                                  \
     return 0;                                                                  \
@@ -474,9 +474,9 @@ DEF_OPENCL_ATOMIC2(xor)
 DEF_OPENCL_ATOMIC1(inc)
 DEF_OPENCL_ATOMIC1(dec)
 
-#define DEF_OPENCL_ATOMIC3(NAME)                                          \
-  int CL_NAME_MANGLED_ATOM(NAME, i)(                              \
-      volatile DEFAULT_AS int *address, int cmp, int val) {                    \
+#define DEF_OPENCL_ATOMIC3(NAME)                                               \
+  int CL_NAME_MANGLED_ATOM(NAME, i)(                                           \
+      DEFAULT_AS int *address, int cmp, int val) {                             \
     volatile global int *gi = to_global(address);                              \
     if (gi)                                                                    \
       return atomic_##NAME(gi, cmp, val);                                      \
@@ -485,8 +485,8 @@ DEF_OPENCL_ATOMIC1(dec)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                     \
-      volatile DEFAULT_AS unsigned int *address, unsigned int cmp,             \
+  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
+      DEFAULT_AS unsigned int *address, unsigned int cmp,                      \
       unsigned int val) {                                                      \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
@@ -496,14 +496,14 @@ DEF_OPENCL_ATOMIC1(dec)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(               \
-      volatile DEFAULT_AS unsigned long long *address, unsigned long long cmp, \
+  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
+      DEFAULT_AS unsigned long long *address, unsigned long long cmp,          \
       unsigned long long val) {                                                \
     volatile global ulong *gi =                                                \
-        to_global((volatile DEFAULT_AS ulong *)address);                       \
+        to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
       return atom_##NAME(gi, cmp, val);                                        \
-    volatile local ulong *li = to_local((volatile DEFAULT_AS ulong *)address); \
+    volatile local ulong *li = to_local((DEFAULT_AS ulong *)address);          \
     if (gi)                                                                    \
       return atom_##NAME(li, cmp, val);                                        \
     return 0;                                                                  \
@@ -573,7 +573,7 @@ static OVLD float atomic_exch_f(volatile global float *address, float val) {
   return as_float(atomic_xchg((volatile global uint *)(address), as_uint(val)));
 }
 
-EXPORT float CL_NAME_MANGLED_ATOM(add, f)(volatile DEFAULT_AS float *address,
+EXPORT float CL_NAME_MANGLED_ATOM(add, f)(DEFAULT_AS float *address,
                                  float val) {
   volatile global float *gi = to_global(address);
   if (gi)
@@ -584,18 +584,18 @@ EXPORT float CL_NAME_MANGLED_ATOM(add, f)(volatile DEFAULT_AS float *address,
   return 0;
 }
 
-EXPORT double CL_NAME_MANGLED_ATOM(add, d)(volatile DEFAULT_AS double *address,
+EXPORT double CL_NAME_MANGLED_ATOM(add, d)(DEFAULT_AS double *address,
                                   double val) {
-  volatile global double *gi = to_global((volatile DEFAULT_AS double *)address);
+  volatile global double *gi = to_global((DEFAULT_AS double *)address);
   if (gi)
     return atom_add_d(gi, val);
-  volatile local double *li = to_local((volatile DEFAULT_AS double *)address);
+  volatile local double *li = to_local((DEFAULT_AS double *)address);
   if (gi)
     return atom_add_d(li, val);
   return 0;
 }
 
-EXPORT float CL_NAME_MANGLED_ATOM(exch, f)(volatile DEFAULT_AS float *address,
+EXPORT float CL_NAME_MANGLED_ATOM(exch, f)(DEFAULT_AS float *address,
                                  float val) {
   volatile global float *gi = to_global(address);
   if (gi)
