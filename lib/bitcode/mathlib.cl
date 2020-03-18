@@ -400,8 +400,8 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
-      DEFAULT_AS unsigned int *address, unsigned int ui) {                     \
+  uint CL_NAME_MANGLED_ATOM(NAME, u)(                                          \
+      DEFAULT_AS uint *address, uint ui) {                                     \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
       return atomic_##NAME(gi, ui);                                            \
@@ -413,9 +413,9 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
         return 0;                                                              \
     }                                                                          \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
-      DEFAULT_AS unsigned long long *address,                                  \
-      unsigned long long ull) {                                                \
+  ulong CL_NAME_MANGLED_ATOM(NAME, l)(                                         \
+      DEFAULT_AS ulong *address,                                               \
+      ulong ull) {                                                             \
     volatile global ulong *gi =                                                \
         to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
@@ -449,8 +449,8 @@ DEF_OPENCL_ATOMIC2(xor)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
-      DEFAULT_AS unsigned int *address) {                                      \
+  uint CL_NAME_MANGLED_ATOM(NAME, u)(                                          \
+      DEFAULT_AS uint *address) {                                              \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
@@ -459,8 +459,8 @@ DEF_OPENCL_ATOMIC2(xor)
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
-      DEFAULT_AS unsigned long long *address) {                                \
+  ulong CL_NAME_MANGLED_ATOM(NAME, l)(                                         \
+      DEFAULT_AS ulong *address) {                                             \
     volatile global ulong *gi =                                                \
         to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
@@ -485,9 +485,9 @@ DEF_OPENCL_ATOMIC1(dec)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned int CL_NAME_MANGLED_ATOM(NAME, u)(                                  \
-      DEFAULT_AS unsigned int *address, unsigned int cmp,                      \
-      unsigned int val) {                                                      \
+  uint CL_NAME_MANGLED_ATOM(NAME, u)(                                          \
+      DEFAULT_AS uint *address, uint cmp,                                      \
+      uint val) {                                                              \
     volatile global uint *gi = to_global(address);                             \
     if (gi)                                                                    \
       return atomic_##NAME(gi, cmp, val);                                      \
@@ -496,9 +496,9 @@ DEF_OPENCL_ATOMIC1(dec)
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
-  unsigned long long CL_NAME_MANGLED_ATOM(NAME, l)(                            \
-      DEFAULT_AS unsigned long long *address, unsigned long long cmp,          \
-      unsigned long long val) {                                                \
+  ulong CL_NAME_MANGLED_ATOM(NAME, l)(                                         \
+      DEFAULT_AS ulong *address, ulong cmp,                                    \
+      ulong val) {                                                             \
     volatile global ulong *gi =                                                \
         to_global((DEFAULT_AS ulong *)address);                                \
     if (gi)                                                                    \
@@ -631,23 +631,23 @@ EXPORT float CL_NAME2(shfl_xor, f)(float var, int value) {
   return intel_sub_group_shuffle_xor(var, value);
 };
 
-EXPORT int CL_NAME2(shfl_up, i)(int var, unsigned int delta) {
+EXPORT int CL_NAME2(shfl_up, i)(int var, uint delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
 };
-EXPORT float CL_NAME2(shfl_up, f)(float var, unsigned int delta) {
+EXPORT float CL_NAME2(shfl_up, f)(float var, uint delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_down(tmp, var, delta);
   return intel_sub_group_shuffle_up(tmp2, var, delta);
 };
 
-EXPORT int CL_NAME2(shfl_down, i)(int var, unsigned int delta) {
+EXPORT int CL_NAME2(shfl_down, i)(int var, uint delta) {
   int tmp = 0;
   int tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
 };
-EXPORT float CL_NAME2(shfl_down, f)(float var, unsigned int delta) {
+EXPORT float CL_NAME2(shfl_down, f)(float var, uint delta) {
   float tmp = 0;
   float tmp2 = intel_sub_group_shuffle_up(var, tmp, delta);
   return intel_sub_group_shuffle_down(var, tmp2, delta);
