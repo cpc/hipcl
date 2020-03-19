@@ -463,9 +463,14 @@ bool ClQueue::recordEvent(hipEvent_t event) {
    * in both cases, event->recordStream should Retain */
   if (LastEvent == nullptr) {
     cl::Event MarkerEvent;
-    Queue.enqueueMarkerWithWaitList(nullptr, &MarkerEvent);
-    LastEvent = MarkerEvent();
-    clRetainEvent(LastEvent);
+    int err = Queue.enqueueMarkerWithWaitList(nullptr, &MarkerEvent);
+    if (err) {
+      logError ("enqueueMarkerWithWaitList FAILED with {}\n", err);
+      return false;
+    } else {
+      LastEvent = MarkerEvent();
+      clRetainEvent(LastEvent);
+    }
   }
 
   logDebug("record Event: {} on Queue: {}\n", (void *)(LastEvent),

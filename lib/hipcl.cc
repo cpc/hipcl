@@ -549,7 +549,7 @@ hipError_t hipStreamAddCallback(hipStream_t stream,
 
 DEPRECATED(DEPRECATED_MSG)
 hipError_t hipCtxCreate(hipCtx_t *ctx, unsigned int flags, hipDevice_t device) {
-
+  ERROR_IF((ctx == nullptr), hipErrorInvalidValue);
   ERROR_CHECK_DEVNUM(device);
 
   ClContext *cont = CLDeviceById(device).newContext(flags);
@@ -582,6 +582,7 @@ hipError_t hipCtxDestroy(hipCtx_t ctx) {
 
 DEPRECATED(DEPRECATED_MSG)
 hipError_t hipCtxPopCurrent(hipCtx_t *ctx) {
+  ERROR_IF((ctx == nullptr), hipErrorInvalidValue);
   ClContext *currentCtx = getTlsDefaultCtx();
   ClDevice *device = currentCtx->getDevice();
   *ctx = currentCtx;
@@ -602,15 +603,12 @@ hipError_t hipCtxPopCurrent(hipCtx_t *ctx) {
 
 DEPRECATED(DEPRECATED_MSG)
 hipError_t hipCtxPushCurrent(hipCtx_t ctx) {
-  hipError_t e = hipSuccess;
-  if (ctx != nullptr) {
-    tls_defaultCtx = ctx;
-    tls_ctxStack.push(ctx);
-    tls_getPrimaryCtx = false;
-  } else {
-    e = hipErrorInvalidContext;
-  }
-  RETURN(e);
+  ERROR_IF((ctx == nullptr), hipErrorInvalidContext);
+
+  tls_defaultCtx = ctx;
+  tls_ctxStack.push(ctx);
+  tls_getPrimaryCtx = false;
+  RETURN(hipSuccess);
 }
 
 DEPRECATED(DEPRECATED_MSG)
@@ -767,6 +765,7 @@ hipError_t hipEventCreate(hipEvent_t *event) {
 hipError_t hipEventCreateWithFlags(hipEvent_t *event, unsigned flags) {
   ClContext *cont = getTlsDefaultCtx();
   ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  ERROR_IF((event == nullptr), hipErrorInvalidValue);
 
   hipEvent_t EventPtr = cont->createEvent(flags);
   if (EventPtr) {
@@ -780,6 +779,7 @@ hipError_t hipEventCreateWithFlags(hipEvent_t *event, unsigned flags) {
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   ClContext *cont = getTlsDefaultCtx();
   ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  ERROR_IF((event == nullptr), hipErrorInvalidValue);
 
   RETURN(cont->recordEvent(stream, event));
 }
