@@ -39,7 +39,7 @@ void histogram256(
                   unsigned int* data,
                   unsigned int* binResult)
 {
-    HIP_DYNAMIC_SHARED(unsigned char, sharedArray);
+    HIP_DYNAMIC_SHARED(uchar4, sharedArray);
     size_t localId = hipThreadIdx_x;
     size_t globalId = hipThreadIdx_x + hipBlockIdx_x*hipBlockDim_x;
     size_t groupId = hipBlockIdx_x;
@@ -48,9 +48,8 @@ void histogram256(
     int offSet2 = 4 * offSet1;      //which element to access in one bank.
     int offSet3 = localId >> 5;     //bank number
     /* initialize shared array to zero */
-    uchar4 * input = (uchar4*)sharedArray;
     for(int i = 0; i < 64; ++i)
-        input[groupSize * i + localId] = make_uchar4(0,0,0,0);
+        sharedArray[groupSize * i + localId] = make_uchar4(0,0,0,0);
 
     __syncthreads();
 
@@ -83,7 +82,7 @@ void histogram256(
         for(int j = 0; j < 32; ++j)
 		{
 			int bankNum = (j + offSet1) & 31;   // this is bank number
-            binVal = input[passNumber  +bankNum];
+            binVal = sharedArray[passNumber  +bankNum];
 
             binValAsUint.x = (unsigned int)binVal.x;
             binValAsUint.y = (unsigned int)binVal.y;
