@@ -137,9 +137,6 @@ OpenCL Extension required:
    (currently these are mapped to OpenCL variants with default rounding mode)
  * __shfl and various special functions. Some may be possible to implement via subgroups in opencl 2.0
 
-Not yet implemented features:
-
- * Statically sized shared memory works, but dynamic shared memory is not yet implemented
 
 ### Host runtime API ###
 
