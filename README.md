@@ -88,7 +88,7 @@ build+install the HIPCL library:
           ..
     make
 
-The samples directory contains some examples; these can be run from build directory, individually or via ctest.
+The samples directory contains quite a few examples; these can be run from build directory, individually or via ctest.
 
 `make install` will create `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/*.hh}` and
 copy the examples to `<hipcl_install_dir>/bin` directory.
