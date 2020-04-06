@@ -36,10 +36,8 @@
 #define HIP_KERNEL_NAME(...) __VA_ARGS__
 #define HIP_SYMBOL(X) #X
 
-#define SPIR_AS_LOCAL 3
-
 #define HIP_DYNAMIC_SHARED(type, var) \
-       __shared__ type __attribute__((address_space(SPIR_AS_LOCAL))) var[4294967295];
+       __shared__ type var[4294967295];
 
 #define HIP_DYNAMIC_SHARED_ATTRIBUTE
 
