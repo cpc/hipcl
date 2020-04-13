@@ -9,8 +9,8 @@
 
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 #define CL_HPP_MINIMUM_OPENCL_VERSION 200
-#include <CL/cl2.hpp>
 #include <CL/cl_ext_intel.h>
+#include <CL/cl2.hpp>
 
 #include "hip/hipcl.hh"
 
