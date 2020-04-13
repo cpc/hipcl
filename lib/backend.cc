@@ -1107,7 +1107,8 @@ void ClDevice::setupProperties(int index) {
   Properties.maxThreadsDim[1] = wi[1];
   Properties.maxThreadsDim[2] = wi[2];
 
-  Properties.clockRate = Dev.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+  // Maximum configured clock frequency of the device in MHz.
+  Properties.clockRate = 1000 * Dev.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
 
   Properties.multiProcessorCount = Dev.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
   Properties.l2CacheSize = Dev.getInfo<CL_DEVICE_GLOBAL_MEM_CACHE_SIZE>();
@@ -1117,9 +1118,12 @@ void ClDevice::setupProperties(int index) {
 
   // totally made up
   Properties.regsPerBlock = 64;
-  // intel GPU uses minimum 8, so for now set this to 8.
-  // TODO should be properly detected and/or workarounds for __shfl should exist.
-  Properties.warpSize = 8;
+
+  // The maximum subgroup size on an intel GPU
+  if (Dev.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
+    std::vector<uint> sg = Dev.getInfo<CL_DEVICE_SUB_GROUP_SIZES_INTEL>();
+    Properties.warpSize = *std::max_element(sg.begin(), sg.end());
+  }
   Properties.maxGridSize[0] = Properties.maxGridSize[1] =
       Properties.maxGridSize[2] = 65536;
   Properties.memoryClockRate = 1000;
