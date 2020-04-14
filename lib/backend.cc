@@ -124,7 +124,7 @@ bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
 
   if (NumArgs > 0) {
     logDebug("Kernel {} numArgs: {} \n", Name, NumArgs);
-    logDebug("  RET_TYPE: {} {} {}\n", FuncInfo->retTypeInfo.size,
+    logDebug("  RET_TYPE: SIZE {} SPACE {} TYPE {}\n", FuncInfo->retTypeInfo.size,
              (unsigned)FuncInfo->retTypeInfo.space,
              (unsigned)FuncInfo->retTypeInfo.type);
     for (auto &argty : FuncInfo->ArgTypeInfo) {
@@ -241,7 +241,7 @@ bool ClProgram::setup(std::string &binary) {
     logError("clCreateKernels() Failed: {}\n", err);
     return false;
   }
-  logDebug("Kernels in program: {} \n", kernels.size());
+  logDebug("Number of kernels in program: {} \n", kernels.size());
   Kernels.resize(kernels.size());
 
   for (size_t i = 0; i < kernels.size(); ++i) {
@@ -299,7 +299,7 @@ bool SVMemoryRegion::free(void *p, size_t *size) {
   if (I != SvmAllocations.end()) {
     void *Ptr = I->first;
     *size = I->second;
-    logDebug("clSVMFree on: {}\n", Ptr);
+    logDebug("clSVMFree on: {} / {}\n", Ptr, *size);
     SvmAllocations.erase(I);
     ::clSVMFree(Context(), Ptr);
     return true;
@@ -1025,11 +1025,9 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
     if (*p == HIP_LAUNCH_PARAM_BUFFER_POINTER) {
       args = (void *)p[1];
       p += 2;
-      continue;
     } else if (*p == HIP_LAUNCH_PARAM_BUFFER_SIZE) {
       size = (size_t)p[1];
       p += 2;
-      continue;
     } else {
       logError("Unknown parameter in extraParams: {}\n", *p);
       return hipErrorLaunchFailure;
@@ -1156,8 +1154,8 @@ void ClDevice::setupProperties(int index) {
     Properties.arch.hasSharedInt64Atomics = 1;
   }
   else {
-    Properties.arch.hasGlobalInt64Atomics = 1;
-    Properties.arch.hasSharedInt64Atomics = 1;
+    Properties.arch.hasGlobalInt64Atomics = 0;
+    Properties.arch.hasSharedInt64Atomics = 0;
   }
 
   if (Temp.find("cl_khr_fp64") != std::string::npos) 
@@ -1487,7 +1485,7 @@ static void InitializeOpenCLCallOnce() {
     }
   }
 
-  logDebug("DEVICES {}", NumDevices);
+  logDebug("Number of OpenCL devices {}", NumDevices);
   assert(NumDevices == OpenCLDevices.size());
 }
 
