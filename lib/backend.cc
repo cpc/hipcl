@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cassert>
 #include <fstream>
+#include <iostream>
+#include <regex>
 
 #include "backend.hh"
 
@@ -1127,22 +1129,49 @@ void ClDevice::setupProperties(int index) {
       Properties.maxGridSize[2] = 65536;
   Properties.memoryClockRate = 1000;
   Properties.memoryBusWidth = 256;
-  Properties.major = 2;
-  Properties.minor = 0;
+
+  Temp = Dev.getInfo<CL_DEVICE_VERSION>();
+  size_t dig_pos = Temp.find_first_of("123456789");
+  size_t dot_pos = Temp.find_first_of(".", dig_pos);
+  size_t spa_pos = Temp.find_first_of(" ", dot_pos);
+  Properties.major = stoi(Temp.substr(dig_pos, dot_pos-1));
+  Properties.minor = stoi(Temp.substr(dot_pos+1, spa_pos-1));
+
   Properties.maxThreadsPerMultiProcessor = 10;
 
   Properties.computeMode = 0;
   Properties.arch = {};
-  Properties.arch.hasGlobalInt32Atomics = 1;
-  Properties.arch.hasSharedInt32Atomics = 1;
-  Properties.arch.hasGlobalInt64Atomics = 1;
-  Properties.arch.hasSharedInt64Atomics = 1;
+
+  Temp = Dev.getInfo<CL_DEVICE_EXTENSIONS>();
+  if (Temp.find("cl_khr_global_int32_base_atomics") != std::string::npos)
+    Properties.arch.hasGlobalInt32Atomics = 1;
+  else
+    Properties.arch.hasGlobalInt32Atomics = 0;
+
+  if (Temp.find("cl_khr_local_int32_base_atomics") != std::string::npos)
+    Properties.arch.hasSharedInt32Atomics = 1;
+  else
+    Properties.arch.hasSharedInt32Atomics = 0;
+
+  if (Temp.find("cl_khr_int64_base_atomics") != std::string::npos) {
+    Properties.arch.hasGlobalInt64Atomics = 1;
+    Properties.arch.hasSharedInt64Atomics = 1;
+  }
+  else {
+    Properties.arch.hasGlobalInt64Atomics = 1;
+    Properties.arch.hasSharedInt64Atomics = 1;
+  }
+
+  if (Temp.find("cl_khr_fp64") != std::string::npos) 
+    Properties.arch.hasDoubles = 1;
+  else
+    Properties.arch.hasDoubles = 0;
 
   Properties.clockInstructionRate = 2465;
   Properties.concurrentKernels = 1;
   Properties.pciDomainID = 0;
   Properties.pciBusID = 0x10;
-  Properties.pciDeviceID = 0x40 + index;
+  Properties.pciDeviceID = Dev.getInfo<CL_DEVICE_VENDOR_ID>();
   Properties.isMultiGpuBoard = 0;
   Properties.canMapHostMemory = 1;
   Properties.gcnArch = 0;
