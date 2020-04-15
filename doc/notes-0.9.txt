@@ -1,0 +1,59 @@
+HIPCL v0.9 Released
+-------------------
+
+[Heterogeneous-compute Interface for Portability](https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_faq.md), or HIP,
+is a C++ runtime API and kernel language that allows developers to write code that runs on both AMD and NVidia GPUs.
+CUDA applications can be converted to HIP in a largely automated fashion.
+
+HIPCL is a library that allows applications using the HIP API to be run on devices
+which support OpenCL and SPIR-V, thus providing a portability path from CUDA to
+advanced OpenCL platforms.
+
+The detailed and up to date documentation is available in README.md.
+
+Release Status
+--------------
+
+* Most of the HIP API and the HIP kernel language is implemented.
+
+* The most tested implementation is Intel's NEO OpenCL for Intel GPUs.
+  Intel's CPU OpenCL implementations also work, but they are less mature & miss some features.
+
+* There are extra 3rd party samples located [here](https://github.com/cpc/hipcl-samples),
+  and AMD's rocRAND ported to HIPCL located [here](https://github.com/cpc/hipcl-rocRAND).
+
+Known Issues
+------------
+
+* `clEnqueueSVMMemCopy() failed with error -5` - this appears to be a driver bug
+   on Intel GPUs; occurs when one tries to memcpy from read-only data stored in ELF
+   to SVM memory. SVMMemCopy from other sources (stack / heap) works without issues.
+
+* Programs may take a long time to start. This is because Clang inserts startup
+  hooks which register SPIR-V binaries; HIPCL at this point compiles each, and for
+  each program built, creates all kernels. This can take a long time on some implementations.
+
+* Using HIP_DYNAMIC_SHARED() macro outside a function scope is not yet supported.
+  Doing so will likely result in error:
+  Assertion `FuncSet.size() <= 1 && "more than one function uses dynamic mem variable!"' failed.`
+
+* HIPCL reports the global memory size from OpenCL as available memory, but unlike with CUDA,
+  it's not possible to allocate all of that memory in a single block;
+  HIPCL is limited by CL_DEVICE_MAX_MEM_ALLOC_SIZE.
+
+* There are some unresolved compiler bugs present in the HIPCL-patched Clang, so compilation
+  may fail, especially when HIPCL is compiled with -O0 flag.
+
+Acknowledgements
+----------------
+
+Customized Parallel Computing research group of Tampere
+University, Finland likes to thank the HSA Foundation and the
+ECSEL JU project FitOptiVis (project number 783162) for funding
+most of the development work for this release. Much appreciated!
+
+Links
+-----
+Home page:         http://github.com/cpc/hipcl
+3rd party samples: http://github.com/cpc/hipcl-samples
+hipcl-rocRAND:     https://github.com/cpc/hipcl-rocRAND
