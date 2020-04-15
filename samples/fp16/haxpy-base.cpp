@@ -48,10 +48,41 @@ void checkCuda(hipError_t result) {
   }
 }
 
+size_t errors;
+
+// TODO investigate: it seems the errors can get quite large (~ 2.0) on some
+void check(const half *x, const half *y, const int n) {
+  errors = 0;
+  float eps = 2.0f;
+  for (int i = 0; i < n; i++) {
+    float gpu_computed = half_to_float(y[i]);
+    float verify = half_to_float(x[i]) * 5.0f;
+    if (std::fabs(gpu_computed - verify) > eps) {
+      ++errors;
+      if (errors < 32) {
+        std::cerr << "Error at N: " << i << " x[i]: " << half_to_float(x[i])
+                  << " GPU: " << gpu_computed << " CPU: " << verify << "\n";
+      }
+    }
+  }
+}
+
 __global__ void haxpy(half a, const half *x, half *y) {
   size_t i = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   y[i] = x[i] * a;
 }
+
+__global__ void haxpy_v2(half a, const half *x, half *y, const int n) {
+  int cout = n >> 1;
+  int i = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  if (i < cout ) {
+    const half2 *vx = (const half2*)(x) + i;
+    const half2 va = {a, a};
+    half2* vy = (half2*)(y) + i;
+    *vy = *vx * va;
+  }
+}
+
 
 #define SEED 923874103841
 
@@ -84,22 +115,12 @@ int main(void) {
   hipLaunchKernelGGL(haxpy, dim3(nBlocks), dim3(blockSize), 0, 0, a, d_x, d_y);
   checkCuda(hipGetLastError());
   checkCuda(hipMemcpy(y, d_y, n * sizeof(half), hipMemcpyDeviceToHost));
+  check(x, y, n);
 
-  size_t errors = 0;
-  // TODO investigate: it seems the errors can get quite large (~ 2.0) on some
-  // GPUs
-  float eps = 2.0f;
-  for (int i = 0; i < n; i++) {
-    float gpu_computed = half_to_float(y[i]);
-    float verify = half_to_float(x[i]) * 5.0f;
-    if (std::fabs(gpu_computed - verify) > eps) {
-      ++errors;
-      if (errors < 32) {
-        std::cerr << "Error at N: " << i << " x[i]: " << half_to_float(x[i])
-                  << " GPU: " << gpu_computed << " CPU: " << verify << "\n";
-      }
-    }
-  }
+  hipLaunchKernelGGL(haxpy_v2, dim3(nBlocks), dim3(blockSize), 0, 0, a, d_x, d_y, n);
+  checkCuda(hipGetLastError());
+  checkCuda(hipMemcpy(y, d_y, n * sizeof(half), hipMemcpyDeviceToHost));
+  check(x, y, n);
 
   free(x);
   free(y);
