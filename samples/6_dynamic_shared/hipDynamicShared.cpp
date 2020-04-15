@@ -43,8 +43,8 @@ __global__ void testExternSharedKernel(const T *A_d, const T *B_d, T *C_d,
   // declare dynamic shared memory
   HIP_DYNAMIC_SHARED(T, sdata)
 
-  size_t gid = (blockIdx.x * blockDim.x + threadIdx.x);
-  size_t tid = threadIdx.x;
+  size_t gid = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x);
+  size_t tid = hipThreadIdx_x;
 
   // initialize dynamic shared memory
   if (tid < groupElements) {

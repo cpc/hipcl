@@ -35,7 +35,7 @@ Download LLVM + Clang:
 
 Build+install LLVM/Clang:
 
-    cmake -DCMAKE_INSTALL_PREFIX=<llvm_destination_dir> [other cmake flags] llvm-git-directory
+    cmake -DCMAKE_INSTALL_PREFIX=<llvm_install_dir> [other cmake flags] llvm-git-directory
     make
     sudo make install
 
@@ -47,11 +47,11 @@ download, build+install the LLVM-SPIRV translator:
     cd SPIRV-LLVM-Translator
     git checkout -b release_80 origin/llvm_release_80
     mkdir build; cd build
-    cmake -DLLVM_DIR=<llvm_destination_dir>/lib/cmake/llvm ..
+    cmake -DLLVM_DIR=<llvm_install_dir>/lib/cmake/llvm ..
     make llvm-spirv
-    sudo cp tools/llvm-spirv/llvm-spirv <llvm_destination_dir>/bin/
+    sudo cp tools/llvm-spirv/llvm-spirv <llvm_install_dir>/bin/
 
-### Known Supported OpenCL Implementations ###
+### Known supported OpenCL implementations ###
 
 At least Intel's "NEO" OpenCL implementation supports 2.x and SPIR-V on Intel GPUs.
 
@@ -62,8 +62,8 @@ but it must be built with LLVM-SPIRV support:
     cd pocl
     mkdir build; cd build
     cmake -DCMAKE_INSTALL_PREFIX=/usr \
-          -DWITH_LLVM_CONFIG=<llvm_destination_dir>/bin/llvm-config \
-          -DLLVM_SPIRV=<llvm_destination_dir>/bin/llvm-spirv \
+          -DWITH_LLVM_CONFIG=<llvm_install_dir>/bin/llvm-config \
+          -DLLVM_SPIRV=<llvm_install_dir>/bin/llvm-spirv \
           ..
     make
     sudo make install
@@ -75,7 +75,7 @@ See https://github.com/pocl/pocl/blob/master/doc/sphinx/source/install.rst for d
 
 Whatever you end up using, make sure that clinfo lists your chosen OpenCL implementation.
 
-### Build HIPCL Library ###
+### Build HIPCL library ###
 
 build+install the HIPCL library:
 
@@ -83,20 +83,37 @@ build+install the HIPCL library:
     cd hipcl
     mkdir build ; cd build;
     cmake -DCMAKE_INSTALL_PREFIX=<hipcl_install_dir> \
-          -DCMAKE_CXX_COMPILER=<llvm_destination_dir>/bin/clang++ \
-          -DCMAKE_C_COMPILER=<llvm_destination_dir>/bin/clang \
+          -DCMAKE_CXX_COMPILER=<llvm_install_dir>/bin/clang++ \
+          -DCMAKE_C_COMPILER=<llvm_install_dir>/bin/clang \
           ..
     make
 
-The samples directory contains quite a few examples; these can be run from build directory, individually or via ctest.
+`CMAKE_INSTALL_PREFIX` defaults to `/opt/hipcl`.
+The samples directory contains a few examples; these can be run from build directory, individually or via ctest.
 
-`make install` will create `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/*.hh}` and
-copy the examples to `<hipcl_install_dir>/bin` directory.
+`make install` will create `<hipcl_install_dir>/{lib/libhipcl.so, share/kernellib.bc, include/hip}` and
+copy the examples to `<hipcl_install_dir>/bin/samples` directory.
 
 Note that CMake removes RPATH at `make install` time, which means that the samples installed into
 `<hipcl_install_dir>/bin` will look for `libhipcl.so` in the default system library paths (/usr/lib and such).
 
-### Example ###
+### Using HIPCL library ###
+
+HIPCL provides a CMake export target named `hip::hipcl`. Using it from CMake is therefore straightforward:
+
+    find_package(HIP REQUIRED CONFIG PATHS "${HIPCL_INSTALL_PREFIX}")
+    target_link_libraries(your-executable hip::hipcl)
+
+This will automatically add all required flags. Note that you must compile your project with CMAKE_CXX_COMPILER set to the Clang built in the first step.
+
+For using outside CMake, there is a `${HIPCL_INSTALL_PREFIX}/bin/hipcl_config` binary which prints the required flags. Manually you can build using this command:
+
+    <llvm_install_dir>/bin/clang++ -pthread -fPIE -O2 -g -std=c++11 `hipcl_config -C` -o binary source.cc -Wl,-rpath,<hipcl_install_prefix>/lib -L<hipcl_install_prefix>/lib -lhipcl
+
+To see what compilation commands are actually run, and get the intermediate files (including the SPIR-V), add ``-v --save-temps`` to the compilation flags. Intermediate files will be saved into the current working directory. The SPIR-V that ends up embedded in the ELF binary is in a file named "a.out-hip-spir64-unknown-unknown-sm_20".
+
+
+### CUDA conversion example ###
 
 To convert a CUDA source to HIP source, use the hipify-clang tool from AMD's HIP repository:
 https://github.com/ROCm-Developer-Tools/HIP/tree/master/hipify-clang
@@ -109,22 +126,25 @@ E.g.
 
     ./hipify-clang -inplace -print-stats example.cu -- -x cuda --cuda-path=/usr/local/cuda-8.0 -I /usr/local/cuda-8.0/samples/common/inc
 
-This should produce a source with CUDA API translated to HIP API calls. To build a HIPCL executable from this source:
+This should produce a source with CUDA API translated to HIP API calls. To build a HIPCL executable from this source, see above `Using HIPCL library`.
 
-Compile:
+## Frequently encountered issues ##
+------------------------
 
-    export CXX_FLAGS="-x hip --target=x86_64-linux-gnu --hip-device-lib-path=<hipcl_install_dir>/share --hip-device-lib=kernellib.bc -pthread -std=c++11"
-    export CXX_INCLUDES="-I<hipcl_install_dir>/include"
-    <llvm_destination_dir>/bin/clang++ $CXX_INCLUDES $CXX_FLAGS -o example.o -c example_hip.cc
+* `clEnqueueSVMMemCopy() failed with error -5` - this appears to be a driver bug on Intel GPUs, occurs when one tries to memcpy from read-only data stored in ELF to SVM memory. SVMMemCopy from other sources (stack / heap) works without issues.
 
-Link:
+* programs may take a long time to start. This is because there Clang inserts startup hooks which register SPIR-V binaries; HIPCL at this point compiles each, and for each program built, creates all kernels. This can take a long time on some implementations.
 
-    <llvm_destination_dir>/bin/clang++ -o example example.o -L<hipcl_install_dir>/lib -lhipcl -pthread -lOpenCL
+* HIPCL reports the global memory size from OpenCL as available memory, but unlike CUDA, it's not possible to allocate all of that memory in a single block; HIPCL is limited by CL_DEVICE_MAX_MEM_ALLOC_SIZE.
 
-To see what compilation commands are actually run, and get the intermediate files (including the SPIR-V), add ``-v --save-temps=cwd`` to the CXX_FLAGS.
-Intermediate files will be saved into the current working directory. The SPIR-V that ends up embedded in the ELF binary is in a file named "a.out-hip-spir64-unknown-unknown-sm_20".
+## Known HIPCL-Clang issues ##
+------------------------
 
-## Known Issues ##
+* Using HIP_DYNAMIC_SHARED() macro outside a function scope is not yet supported. Doing so will likely result in error: Assertion `FuncSet.size() <= 1 && "more than one function uses dynamic mem variable!"' failed.`
+
+* There are unfortunately still some unresolved compiler bugs present in the HIPCL patches to Clang, so compilation may fail, especially when HIPCL is compiled with -O0 flag.
+
+## Known libhipcl issues  ##
 --------------------
 
 Some of these are simply not yet implemented, some are missing because they would require an OpenCL extension.
@@ -135,7 +155,8 @@ OpenCL Extension required:
 
  * __fsqrt_rd and various intrinsics for add/sub/div/mul with predefined rounding mode
    (currently these are mapped to OpenCL variants with default rounding mode)
- * __shfl and various special functions. Some may be possible to implement via subgroups in opencl 2.0
+
+ * __shfl and friends are only available on Intel via cl_intel_subgroups extension.
 
 
 ### Host runtime API ###
