@@ -36,10 +36,8 @@
 #define HIP_KERNEL_NAME(...) __VA_ARGS__
 #define HIP_SYMBOL(X) #X
 
-#define SPIR_AS_LOCAL 3
-
 #define HIP_DYNAMIC_SHARED(type, var) \
-       __shared__ type __attribute__((address_space(SPIR_AS_LOCAL))) var[4294967295];
+       __shared__ type var[4294967295];
 
 #define HIP_DYNAMIC_SHARED_ATTRIBUTE
 
@@ -3222,8 +3220,30 @@ hipError_t hipLaunchByPtr(const void *func);
 #endif
 
 /**
- * @}
+ * @brief: C++ wrapper for hipMalloc
+ *
+ * Perform automatic type conversion to eliminate need for excessive typecasting (ie void**)
+ *
+ * __HIP_DISABLE_CPP_FUNCTIONS__ macro can be defined to suppress these
+ * wrappers. It is useful for applications which need to obtain decltypes of
+ * HIP runtime APIs.
+ *
+ * @see hipMalloc
  */
+#if defined(__cplusplus) && !defined(__HIP_DISABLE_CPP_FUNCTIONS__)
+template <class T>
+static inline hipError_t hipMalloc(T** devPtr, size_t size) {
+    return hipMalloc((void**)devPtr, size);
+}
+
+// Provide an override to automatically typecast the pointer type from void**, and also provide a
+// default for the flags.
+template <class T>
+static inline hipError_t hipHostMalloc(T** ptr, size_t size,
+                                       unsigned int flags = hipHostMallocDefault) {
+    return hipHostMalloc((void**)ptr, size, flags);
+}
+#endif
 
 // doxygen end HIP API
 /**

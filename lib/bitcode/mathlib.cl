@@ -16,8 +16,13 @@
 #define EXPORT NON_OVLD
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_extended_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
 
 #define DEFAULT_AS
 #define PRIVATE_AS __private

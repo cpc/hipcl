@@ -148,22 +148,26 @@ typedef short api_half2 __attribute__((ext_vector_type(2)));
   api_half NON_OVLD GEN_NAME2(NAME, h)(api_half f);                            \
   api_half2 NON_OVLD GEN_NAME2(NAME, h2)(api_half2 f);                         \
   }                                                                            \
-  EXPORT bool NAME##f(float x) { return (bool)GEN_NAME2(NAME, f)(x); }         \
+  EXPORT bool NAME(float x) { return (bool)GEN_NAME2(NAME, f)(x); }            \
   EXPORT bool NAME(double x) { return (bool)GEN_NAME2(NAME, d)(x); }           \
   EXPORT api_half NAME##_h(api_half x) { return GEN_NAME2(NAME, h)(x); }       \
   EXPORT api_half2 NAME##_2h(api_half2 x) { return GEN_NAME2(NAME, h2)(x); }
 
 #define DEFOPENCL1INT(NAME)                                                    \
+  extern "C" {                                                                 \
   int NON_OVLD GEN_NAME2(NAME, f)(float f);                                    \
   int NON_OVLD GEN_NAME2(NAME, d)(double f);                                   \
   int NON_OVLD GEN_NAME2(NAME, h)(api_half f);                                 \
+  }                                                                            \
   EXPORT int NAME##f(float x) { return GEN_NAME2(NAME, f)(x); }                \
   EXPORT int NAME(double x) { return GEN_NAME2(NAME, d)(x); }                  \
   EXPORT int NAME##_h(api_half x) { return GEN_NAME2(NAME, h)(x); }
 
 #define DEFOPENCL1LL(NAME)                                                     \
+  extern "C" {                                                                 \
   int64_t NON_OVLD GEN_NAME2(LL##NAME, f)(float f);                            \
   int64_t NON_OVLD GEN_NAME2(LL##NAME, d)(double f);                           \
+  }                                                                            \
   EXPORT long int l##NAME##f(float x) {                                        \
     return (long int)GEN_NAME2(LL##NAME, f)(x);                                \
   }                                                                            \
@@ -178,7 +182,9 @@ typedef short api_half2 __attribute__((ext_vector_type(2)));
   }
 
 #define DEFOPENCL1F_NATIVE(NAME)                                               \
+  extern "C" {                                                                 \
   float NON_OVLD GEN_NAME2(NAME##_native, f)(float f);                         \
+  }                                                                            \
   EXPORT float __##NAME##f(float x) { return GEN_NAME2(NAME##_native, f)(x); }
 
 #define FAKE_ROUNDINGS2(NAME, CODE)                                            \
@@ -239,7 +245,7 @@ typedef short api_half2 __attribute__((ext_vector_type(2)));
                              api_half2 w);
 
 #define DEFOPENCL1B(NAME)                                                      \
-  EXPORT bool NAME##f(float x);                                                \
+  EXPORT bool NAME(float x);                                                   \
   EXPORT bool NAME(double x);                                                  \
   EXPORT api_half NAME##_h(api_half x);                                        \
   EXPORT api_half2 NAME##_2h(api_half2 x);
