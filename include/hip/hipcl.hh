@@ -784,6 +784,13 @@ static inline hipError_t hipHostMalloc(T** ptr, size_t size,
 }
 #endif
 
+static inline struct hipExtent make_hipExtent(size_t w, size_t h, size_t d) {
+    struct hipExtent e;
+    e.width = w;
+    e.height = h;
+    e.depth = d;
+    return e;
+}
 
 //-------------------------------------------------------------------------------------------------
 
@@ -2142,6 +2149,8 @@ hipError_t hipArray3DCreate(hipArray **array,
                             const HIP_ARRAY_DESCRIPTOR *pAllocateArray);
 
 hipError_t hipMalloc3D(hipPitchedPtr *pitchedDevPtr, hipExtent extent);
+
+struct hipExtent make_hipExtent(size_t w, size_t h, size_t d);
 
 /**
  *  @brief Frees an array on the device.
