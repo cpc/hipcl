@@ -2148,8 +2148,6 @@ hipError_t hipArray3DCreate(hipArray **array,
 
 hipError_t hipMalloc3D(hipPitchedPtr *pitchedDevPtr, hipExtent extent);
 
-struct hipExtent make_hipExtent(size_t w, size_t h, size_t d);
-
 /**
  *  @brief Frees an array on the device.
  *
