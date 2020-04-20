@@ -170,7 +170,7 @@ int main() {
     errors += verify(TransposeMatrix, cpuTransposeMatrix);
 
     runTest(gpuMatrix, gpuTransposeMatrix, Matrix, TransposeMatrix, 3);
-    errors = verify(TransposeMatrix, cpuTransposeMatrix);
+    errors += verify(TransposeMatrix, cpuTransposeMatrix);
 
     // free the resources on device side
     hipFree(gpuMatrix);
