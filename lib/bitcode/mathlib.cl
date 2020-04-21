@@ -399,7 +399,7 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
       return atomic_##NAME(gi, i);                                             \
     else {                                                                     \
       volatile local int *li = to_local(address);                              \
-      if (gi)                                                                  \
+      if (li)                                                                  \
         return atomic_##NAME(li, i);                                           \
       else                                                                     \
         return 0;                                                              \
@@ -412,7 +412,7 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
       return atomic_##NAME(gi, ui);                                            \
     else {                                                                     \
       volatile local uint *li = to_local(address);                             \
-      if (gi)                                                                  \
+      if (li)                                                                  \
         return atomic_##NAME(li, ui);                                          \
       else                                                                     \
         return 0;                                                              \
@@ -428,7 +428,7 @@ EXPORT ulong CL_NAME2(umul64hi, uli)(ulong x, ulong y) {
     else {                                                                     \
       volatile local ulong *li =                                               \
           to_local((DEFAULT_AS ulong *)address);                               \
-      if (gi)                                                                  \
+      if (li)                                                                  \
         return atom_##NAME(li, ull);                                           \
       else                                                                     \
         return 0;                                                              \
@@ -450,7 +450,7 @@ DEF_OPENCL_ATOMIC2(xor)
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
     volatile local int *li = to_local(address);                                \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
@@ -460,7 +460,7 @@ DEF_OPENCL_ATOMIC2(xor)
     if (gi)                                                                    \
       return atomic_##NAME(gi);                                                \
     volatile local uint *li = to_local(address);                               \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atomic_##NAME(li);                                                \
     return 0;                                                                  \
   };                                                                           \
@@ -471,7 +471,7 @@ DEF_OPENCL_ATOMIC2(xor)
     if (gi)                                                                    \
       return atom_##NAME(gi);                                                  \
     volatile local ulong *li = to_local((DEFAULT_AS ulong *)address);          \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atom_##NAME(li);                                                  \
     return 0;                                                                  \
   };
@@ -486,7 +486,7 @@ DEF_OPENCL_ATOMIC1(dec)
     if (gi)                                                                    \
       return atomic_##NAME(gi, cmp, val);                                      \
     volatile local int *li = to_local(address);                                \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
@@ -497,7 +497,7 @@ DEF_OPENCL_ATOMIC1(dec)
     if (gi)                                                                    \
       return atomic_##NAME(gi, cmp, val);                                      \
     volatile local uint *li = to_local(address);                               \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atomic_##NAME(li, cmp, val);                                      \
     return 0;                                                                  \
   };                                                                           \
@@ -509,7 +509,7 @@ DEF_OPENCL_ATOMIC1(dec)
     if (gi)                                                                    \
       return atom_##NAME(gi, cmp, val);                                        \
     volatile local ulong *li = to_local((DEFAULT_AS ulong *)address);          \
-    if (gi)                                                                    \
+    if (li)                                                                    \
       return atom_##NAME(li, cmp, val);                                        \
     return 0;                                                                  \
   };
@@ -584,7 +584,7 @@ EXPORT float CL_NAME_MANGLED_ATOM(add, f)(DEFAULT_AS float *address,
   if (gi)
     return atomic_add_f(gi, val);
   volatile local float *li = to_local(address);
-  if (gi)
+  if (li)
     return atomic_add_f(li, val);
   return 0;
 }
@@ -595,7 +595,7 @@ EXPORT double CL_NAME_MANGLED_ATOM(add, d)(DEFAULT_AS double *address,
   if (gi)
     return atom_add_d(gi, val);
   volatile local double *li = to_local((DEFAULT_AS double *)address);
-  if (gi)
+  if (li)
     return atom_add_d(li, val);
   return 0;
 }
@@ -606,7 +606,7 @@ EXPORT float CL_NAME_MANGLED_ATOM(exch, f)(DEFAULT_AS float *address,
   if (gi)
     return atomic_exch_f(gi, val);
   volatile local float *li = to_local(address);
-  if (gi)
+  if (li)
     return atomic_exch_f(li, val);
   return 0;
 }
