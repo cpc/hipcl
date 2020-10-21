@@ -898,6 +898,7 @@ bool ClContext::finishAll() {
     for (hipStream_t I : Queues) {
       Copies.push_back(I->getQueue());
     }
+    Copies.push_back(DefaultQueue->getQueue());
   }
 
   for (cl::CommandQueue &I : Copies) {
