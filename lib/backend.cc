@@ -858,10 +858,10 @@ hipError_t ClContext::eventElapsedTime(float *ms, hipEvent_t start,
     Elapsed = Started - Finished;
   } else
     Elapsed = Finished - Started;
-  uint64_t S = Elapsed / NANOSECS;
+  uint64_t MS = (Elapsed / NANOSECS)*1000;
   uint64_t NS = Elapsed % NANOSECS;
   float FractInMS = ((float)NS) / 1000000.0f;
-  *ms = (float)S + FractInMS;
+  *ms = (float)MS + FractInMS;
   return hipSuccess;
 }
 
