@@ -37,11 +37,11 @@ enable_testing()
 option(CXXOPTS_BUILD_EXAMPLES "Set to ON to build examples" ON)
 option(CXXOPTS_BUILD_TESTS "Set to ON to build tests" ON)
 
-# request c++11 without gnu extension for the whole project and enable more warnings
+# request c++14 without gnu extension for the whole project and enable more warnings
 if (CXXOPTS_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD ${CXXOPTS_CXX_STANDARD})
 else()
-  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD 14)
 endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
