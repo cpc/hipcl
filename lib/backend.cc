@@ -1119,10 +1119,11 @@ void ClDevice::setupProperties(int index) {
   // totally made up
   Properties.regsPerBlock = 64;
 
-  // The maximum subgroup size on an intel GPU
+  // The minimum subgroup size on an intel GPU
   if (Dev.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
     std::vector<uint> sg = Dev.getInfo<CL_DEVICE_SUB_GROUP_SIZES_INTEL>();
-    Properties.warpSize = *std::max_element(sg.begin(), sg.end());
+    if (sg.begin() != sg.end())
+      Properties.warpSize = *std::min_element(sg.begin(), sg.end());
   }
   Properties.maxGridSize[0] = Properties.maxGridSize[1] =
       Properties.maxGridSize[2] = 65536;
