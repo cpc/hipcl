@@ -1129,13 +1129,8 @@ void ClDevice::setupProperties(int index) {
       Properties.maxGridSize[2] = 65536;
   Properties.memoryClockRate = 1000;
   Properties.memoryBusWidth = 256;
-
-  Temp = Dev.getInfo<CL_DEVICE_VERSION>();
-  size_t dig_pos = Temp.find_first_of("123456789");
-  size_t dot_pos = Temp.find_first_of(".", dig_pos);
-  size_t spa_pos = Temp.find_first_of(" ", dot_pos);
-  Properties.major = stoi(Temp.substr(dig_pos, dot_pos-1));
-  Properties.minor = stoi(Temp.substr(dot_pos+1, spa_pos-1));
+  Properties.major = 2;
+  Properties.minor = 0;
 
   Properties.maxThreadsPerMultiProcessor = 10;
 
@@ -1171,7 +1166,7 @@ void ClDevice::setupProperties(int index) {
   Properties.concurrentKernels = 1;
   Properties.pciDomainID = 0;
   Properties.pciBusID = 0x10;
-  Properties.pciDeviceID = Dev.getInfo<CL_DEVICE_VENDOR_ID>();
+  Properties.pciDeviceID = 0x40 + index;
   Properties.isMultiGpuBoard = 0;
   Properties.canMapHostMemory = 1;
   Properties.gcnArch = 0;
