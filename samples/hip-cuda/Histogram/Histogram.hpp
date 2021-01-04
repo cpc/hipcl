@@ -40,7 +40,7 @@ using namespace std;
 #define WIDTH 1024
 #define HEIGHT 1024
 #define BIN_SIZE 256
-#define GROUP_SIZE 128
+#define GROUP_SIZE 16
 #define GROUP_ITERATIONS (BIN_SIZE / 2)//This is done to avoid overflow in the kernel
 #define SUB_HISTOGRAM_COUNT ((WIDTH * HEIGHT) /(GROUP_SIZE * GROUP_ITERATIONS))
 
@@ -71,7 +71,7 @@ class Histogram
         unsigned long usedLocalMemory;       /**< Used local memory by kernel */
 
         unsigned int* dataBuf;                 /**< CL memory buffer for data */
-        unsigned int* midDeviceBinBuf;         /**< CL memory buffer for intermittent device bin */
+        unsigned int* deviceBinBuf;         /**< CL memory buffer for intermittent device bin */
 
         int iterations;                     /**< Number of iterations for kernel execution */
         bool scalar;                        /**< scalar kernel */

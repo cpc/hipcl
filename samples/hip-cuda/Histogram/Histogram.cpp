@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 #define LINEAR_MEM_ACCESS
 
-#define BIN_SIZE 256
 
 /**
  * @brief   Calculates block-histogram bin whose bin size is 256
@@ -34,71 +33,35 @@ THE SOFTWARE.
  * @param   sharedArray shared array for thread-histogram bins
  * @param   binResult block-histogram array
  */
-__global__
-void histogram256(
-                  unsigned int* data,
-                  unsigned int* binResult)
-{
-    HIP_DYNAMIC_SHARED(uchar4, sharedArray);
-    size_t localId = hipThreadIdx_x;
-    size_t globalId = hipThreadIdx_x + hipBlockIdx_x*hipBlockDim_x;
-    size_t groupId = hipBlockIdx_x;
-    size_t groupSize = hipBlockDim_x;
-    int offSet1 = localId & 31;    
-    int offSet2 = 4 * offSet1;      //which element to access in one bank.
-    int offSet3 = localId >> 5;     //bank number
-    /* initialize shared array to zero */
-    for(int i = 0; i < 64; ++i)
-        sharedArray[groupSize * i + localId] = make_uchar4(0,0,0,0);
 
-    __syncthreads();
+__global__ void compute_histogram(const size_t num_elements,
+                                  const unsigned *data,
+                                  unsigned *histogram) {
 
+  size_t thread = hipThreadIdx_x;
+  size_t block = hipBlockDim_x;
 
-    /* calculate thread-histograms */
-	//128 accumulations per thread
-	for(int i = 0; i < 128; i++)
-    {
-#ifdef LINEAR_MEM_ACCESS
-       uint value =  data[groupId * (groupSize * (BIN_SIZE/2)) + i * groupSize + localId]; 
-#else
-       uint  value = data[globalId + i*4096];
+  __shared__ unsigned local[BIN_SIZE];
 
-#endif // LINEAR_MEM_ACCESS
-	   sharedArray[value * 128 + offSet2 + offSet3]++;
-    }  
-    __syncthreads();
-    
-    /* merge all thread-histograms into block-histogram */
+  for (size_t i = thread; i < BIN_SIZE; i += block)
+    local[i] = 0;
 
-	uint4 binCount;
-	uint result;
-	uchar4 binVal;	            //Introduced uint4 for summation to avoid overflows
-	uint4 binValAsUint;
-	for(int i = 0; i < BIN_SIZE / groupSize; ++i)
-    {
-        int passNumber = BIN_SIZE / 2 * 32 * i +  localId * 32 ;
-		binCount = make_uint4(0,0,0,0);
-		result= 0;
-        for(int j = 0; j < 32; ++j)
-		{
-			int bankNum = (j + offSet1) & 31;   // this is bank number
-            binVal = sharedArray[passNumber  +bankNum];
+  __syncthreads();
 
-            binValAsUint.x = (unsigned int)binVal.x;
-            binValAsUint.y = (unsigned int)binVal.y;
-            binValAsUint.z = (unsigned int)binVal.z;
-            binValAsUint.w = (unsigned int)binVal.w;
+  for (size_t idx = (hipBlockIdx_x * hipBlockDim_x) + hipThreadIdx_x;
+       idx < num_elements; idx += hipGridDim_x * hipBlockDim_x) {
 
-            binCount.x += binValAsUint.x;
-            binCount.y += binValAsUint.y;
-            binCount.z += binValAsUint.z;
-            binCount.w += binValAsUint.w;
+    size_t bucket = data[idx] % BIN_SIZE;
+    atomicAdd(&local[bucket], 1);
+  }
 
-		}
-        result = binCount.x + binCount.y + binCount.z + binCount.w;
-        binResult[groupId * BIN_SIZE + groupSize * i + localId ] = result;
-	}
+  __syncthreads();
+
+  for (size_t i = thread; i < BIN_SIZE; i += block)
+    atomicAdd(&histogram[i], local[i]);
 }
+
+
 
 int
 Histogram::calculateHostBin()
@@ -129,45 +92,11 @@ Histogram::setupHistogram()
 
     hostBin = (unsigned int*)malloc(binSize * sizeof(unsigned int));
     CHECK_ALLOCATION(hostBin, "Failed to allocate host memory. (hostBin)");
-
     memset(hostBin, 0, binSize * sizeof(unsigned int));
 
     deviceBin = (unsigned int*)malloc(binSize * sizeof(unsigned int));
     CHECK_ALLOCATION(deviceBin, "Failed to allocate host memory. (deviceBin)");
-    midDeviceBin = (unsigned int*)malloc(sizeof(unsigned int) * binSize * subHistgCnt);
-
     memset(deviceBin, 0, binSize * sizeof(unsigned int));
-
-
-    if(scalar && vector)//if both options are specified
-    {
-        std::cout<<"Ignoring --scalar and --vector option and using the default vector width of 4"<<std::endl;
-    }
-
-    else if(scalar)
-    {
-        vectorWidth = 1;
-    }
-    else if(vector)
-    {
-        vectorWidth = 4;
-    }
-    else //if no option is specified.
-    {
-        vectorWidth = 1;
-    }
-
-    if(!sampleArgs->quiet)
-    {
-        if(vectorWidth == 4)
-        {
-            std::cout<<"Selecting scalar kernel\n"<<std::endl;
-        }
-        else
-        {
-            std::cout<<"Selecting vector kernel\n"<<std::endl;
-        }
-    }
 
     return SDK_SUCCESS;
 }
@@ -196,49 +125,28 @@ Histogram::runKernels(void)
     hipEventCreate(&stop);
     float eventMs = 1.0f;
 
-    groupSize = 128;
     globalThreads = (width * height) / (GROUP_ITERATIONS);
 
-    localThreads = groupSize;
-
-
-    hipHostMalloc((void**)&dataBuf,sizeof(unsigned int) * width * height, hipHostMallocDefault);
-    unsigned int *din;
-    hipHostGetDevicePointer((void**)&din, dataBuf,0);
-    hipMemcpy(din, data,sizeof(unsigned int) * width * height, hipMemcpyHostToDevice);
-
-    subHistgCnt = (width * height) / (groupSize * groupIterations);
-
-    hipHostMalloc((void**)&midDeviceBinBuf,sizeof(unsigned int) * binSize * subHistgCnt, hipHostMallocDefault);
+    hipMalloc((void**)&dataBuf,sizeof(unsigned int) * width * height);
+    hipMalloc((void**)&deviceBinBuf,sizeof(unsigned int) * binSize);
+    hipMemcpy(dataBuf, data, sizeof(unsigned int) * width * height, hipMemcpyHostToDevice);
+    hipMemset(deviceBinBuf, 0, sizeof(unsigned int) * binSize);
 
     hipEventRecord(start, NULL);
 
-    hipLaunchKernelGGL(histogram256,
-                    dim3(globalThreads/localThreads),
-                    dim3(localThreads),
-                    groupSize * binSize * sizeof(unsigned char), 0,
-                    dataBuf ,midDeviceBinBuf);
+    hipLaunchKernelGGL(compute_histogram,
+                    dim3(globalThreads/GROUP_SIZE),
+                    dim3(GROUP_SIZE),
+                    groupSize * binSize * sizeof(unsigned int), 0,
+                    (width * height), dataBuf, deviceBinBuf);
 
     hipEventRecord(stop, NULL);
     hipEventSynchronize(stop);
 
     hipEventElapsedTime(&eventMs, start, stop);
+    printf ("kernel_time (hipEventElapsedTime) =%6.3f ms\n", eventMs);
 
-    printf ("kernel_time (hipEventElapsedTime) =%6.3fms\n", eventMs);
-
-    hipMemcpy(midDeviceBin, midDeviceBinBuf,sizeof(unsigned int) * binSize * subHistgCnt, hipMemcpyDeviceToHost);
-        //printArray<unsigned int>("midDeviceBin", midDeviceBin, sizeof(unsigned int) * binSize * subHistgCnt, 1);
-    // Clear deviceBin array
-    memset(deviceBin, 0, binSize * sizeof(unsigned int));
-
-    // Calculate final histogram bin
-    for(int i = 0; i < subHistgCnt; ++i)
-    {
-        for(int j = 0; j < binSize; ++j)
-        {
-            deviceBin[j] += midDeviceBin[i * binSize + j];
-        }
-    }
+    hipMemcpy(deviceBin, deviceBinBuf, sizeof(unsigned int) * binSize, hipMemcpyDeviceToHost);
 
     return SDK_SUCCESS;
 }
@@ -332,8 +240,8 @@ Histogram::setup()
     /* width must be multiples of binSize and
      * height must be multiples of groupSize
      */
-    width = (width / binSize ? width / binSize: 1) * binSize;
-    height = (height / groupSize ? height / groupSize: 1) * groupSize;
+//    width = (width / binSize ? width / binSize: 1) * binSize;
+//    height = (height / groupSize ? height / groupSize: 1) * groupSize;
 
     int timer = sampleTimer->createTimer();
     sampleTimer->resetTimer(timer);
@@ -470,7 +378,7 @@ int Histogram::cleanup()
 
 
     hipFree(dataBuf);
-    hipFree(midDeviceBinBuf);
+    hipFree(deviceBinBuf);
 
     // Release program resources (input memory etc.)
     FREE(hostBin);
