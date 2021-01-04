@@ -6,6 +6,9 @@
 #define __HIP_PLATFORM_HIPCL__
 #endif
 
+#include <cmath>
+#include <cstdint>
+
 #include <hip/hipcl.hh>
 
 #include <hip/hip_vector_types.h>
