@@ -23,6 +23,7 @@
 using namespace llvm;
 
 #define SPIR_LOCAL_AS 3
+#define GENERIC_AS 4
 
 typedef llvm::SmallPtrSet<Function *, 8> FSet;
 
@@ -128,22 +129,22 @@ private:
   Function *cloneFunctionWithDynMemArg(Function *F, Module &M,
                                        GlobalVariable *GV) {
 
+    SmallVector<Type *, 8> Parameters;
+
     // [1024 * float] AS3*
     PointerType *GVT = GV->getType();
+
+    // AT & ELT are only for OpenCL metadata.
     // [1024 * float]
     ArrayType *AT = dyn_cast<ArrayType>(GVT->getElementType());
     // float
     Type *ELT = AT->getElementType();
-    // float AS3*
-    PointerType *sharedMemTy = PointerType::get(ELT, GVT->getAddressSpace());
-
-    SmallVector<Type *, 8> Parameters;
 
     for (Function::const_arg_iterator i = F->arg_begin(), e = F->arg_end();
          i != e; ++i) {
       Parameters.push_back(i->getType());
     }
-    Parameters.push_back(sharedMemTy);
+    Parameters.push_back(GVT);
 
     // Create the new function.
     FunctionType *FT =
@@ -177,55 +178,13 @@ private:
     Argument *last_arg = NewF->arg_end();
     --last_arg;
 
-    // GEPs into arrays use an additional index
-    // (e.g. GEP for some_array[5] has two indexes, not one)
-    // dynamic local variable is always an array;
-    // since we're replacing it with simple pointer to local memory,
-    // we need to remove the first index from GEPs.
-    bool changedGEP;
-    do {
-      changedGEP = false;
-      for (auto U : GV->users()) {
-        if (!isValueUsedByFunction(U, NewF)) {
-          continue;
-        }
-        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(U);
-        if (GEP != nullptr) {
-          std::vector<Value *> NewIdxList;
-          assert(GEP->getNumIndices() > 1);
-          auto i = GEP->idx_begin();
-          ++i; // skip first
-          for (; i < GEP->idx_end(); ++i) {
-            NewIdxList.push_back(*i);
-          }
-
-          GetElementPtrInst *ReplGEP = llvm::GetElementPtrInst::Create(
-              ELT, last_arg, NewIdxList, "replacementGEP", GEP);
-          GEP->replaceAllUsesWith(ReplGEP);
-          GEP->eraseFromParent();
-          changedGEP = true;
-          break;
-        }
-      }
-    } while (changedGEP);
-
-    // if the previous step failed to remove all uses,
-    // create an additional pointer indirection by creating an alloca,
-    // and replace all dynamic shared mem uses with it.
-    // could be less efficient but should always work.
+    // replace all dynamic shared mem uses with local argument
     if (GV->getNumUses() > 0) {
 
       IRBuilder<> B(M.getContext());
       B.SetInsertPoint(NewF->getEntryBlock().getFirstNonPHI());
 
-      AllocaInst *Alloca1 =
-          B.CreateAlloca(sharedMemTy, 0, "allocaSharedMemPtr");
-
-      StoreInst *Store1 = B.CreateStore(last_arg, Alloca1);
-
-      Value *CastSHM = B.CreatePointerBitCastOrAddrSpaceCast(Alloca1, GVT,
-                                                             "castedSharedMem");
-      GV->replaceAllUsesWith(CastSHM);
+      GV->replaceAllUsesWith(last_arg);
     }
 
     assert(GV->getNumUses() == 0 && "Some uses still remain - bug!");
