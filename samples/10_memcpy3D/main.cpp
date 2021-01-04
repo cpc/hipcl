@@ -79,7 +79,7 @@ for (int i=0; i<N; i++)
 
 
    // --- 3D pitched allocation and host->device memcopy
-   hipExtent extent = make_hipExtent(M * sizeof(float), N, W);
+   hipExtent extent{M * sizeof(float), N, W};
 
    hipPitchedPtr devPitchedPtr;
 
