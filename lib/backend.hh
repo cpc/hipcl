@@ -7,6 +7,8 @@
 #include <tuple>
 #include <vector>
 
+#define CL_TARGET_OPENCL_VERSION 210
+#define CL_MINIMUM_OPENCL_VERSION 200
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 #define CL_HPP_MINIMUM_OPENCL_VERSION 200
 #include <CL/cl_ext_intel.h>
