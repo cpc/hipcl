@@ -5,6 +5,7 @@
 #include <cassert>
 #include <chrono>
 #include <cmath>
+#include <cfloat>
 
 // hip header file
 #include "hip/hip_runtime.h"
@@ -292,17 +293,18 @@ int main() {
 
     // verify the results
     size_t errors = 0;
-    float eps = 1.0;
+    float eps = FLT_EPSILON * 4;
     for (i = 0; i < WIDTH; i++) {
         for (j = 0; j < WIDTH; j++) {
           float cpu = cpuMultiplyMatrix[i*WIDTH+j];
           float gpu = MultiplyMatrix[i*WIDTH+j];
-          if (std::fabs(gpu - cpu) > eps) {
+          float diff = std::fabs(gpu - cpu);
+          if (diff > std::max(std::fabs(cpu), std::fabs(gpu)) * eps) {
             errors++;
             std::cout << "E[" << i << "][" << j << "]: M1 "
                       << Matrix1[i*WIDTH+j] << " M2 " << Matrix1[i*WIDTH+j]
                       << " CPU: " << cpu << " GPU: "
-                      << gpu << " ERROR: " << std::fabs(gpu - cpu) << "\n";
+                      << gpu << " ERROR: " << diff << "\n";
           }
         }
     }
