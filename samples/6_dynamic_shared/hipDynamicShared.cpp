@@ -40,72 +40,75 @@ template <typename T>
 __global__ void testExternSharedKernel(const T *A_d, const T *B_d, T *C_d,
                                        size_t numElements,
                                        size_t groupElements) {
-  // declare dynamic shared memory
-  HIP_DYNAMIC_SHARED(T, sdata)
+  // declare dynamic shared memory; should be 2*groupElements size
+  HIP_DYNAMIC_SHARED(T, sdata);
 
   size_t gid = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x);
   size_t tid = hipThreadIdx_x;
+  size_t tid2 = groupElements + hipThreadIdx_x;
 
   // initialize dynamic shared memory
   if (tid < groupElements) {
     sdata[tid] = static_cast<T>(tid);
+    sdata[tid2] = static_cast<T>(tid);
   }
 
   // prefix sum inside dynamic shared memory
-  if (groupElements >= 512) {
-    if (tid >= 256) {
-      sdata[tid] += sdata[tid - 256];
-    }
-    __syncthreads();
-  }
+
   if (groupElements >= 256) {
-    if (tid >= 128) {
-      sdata[tid] += sdata[tid - 128];
+    if (tid >= 128 && tid < groupElements) {
+      sdata[tid2] = sdata[tid] + sdata[tid - 128];
     }
     __syncthreads();
   }
   if (groupElements >= 128) {
-    if (tid >= 64) {
-      sdata[tid] += sdata[tid - 64];
+    if (tid >= 64 && tid < groupElements) {
+      sdata[tid] = sdata[tid2] + sdata[tid2 - 64];
     }
     __syncthreads();
   }
   if (groupElements >= 64) {
-    if (tid >= 32) {
-      sdata[tid] += sdata[tid - 32];
+    if (tid >= 32 && tid < groupElements) {
+      sdata[tid2] = sdata[tid] + sdata[tid - 32];
     }
     __syncthreads();
   }
   if (groupElements >= 32) {
-    if (tid >= 16) {
-      sdata[tid] += sdata[tid - 16];
+    if (tid >= 16 && tid < groupElements) {
+      sdata[tid] = sdata[tid2] + sdata[tid2 - 16];
     }
     __syncthreads();
   }
+
   if (groupElements >= 16) {
-    if (tid >= 8) {
-      sdata[tid] += sdata[tid - 8];
+    if (tid >= 8 && tid < groupElements) {
+      sdata[tid2] = sdata[tid] + sdata[tid - 8];
     }
     __syncthreads();
   }
+
   if (groupElements >= 8) {
-    if (tid >= 4) {
-      sdata[tid] += sdata[tid - 4];
+    if (tid >= 4 && tid < groupElements) {
+      sdata[tid] = sdata[tid2] + sdata[tid2 - 4];
     }
     __syncthreads();
   }
+
   if (groupElements >= 4) {
-    if (tid >= 2) {
-      sdata[tid] += sdata[tid - 2];
+    if (tid >= 2 && tid < groupElements) {
+      sdata[tid2] = sdata[tid] + sdata[tid - 2];
     }
     __syncthreads();
   }
+
   if (groupElements >= 2) {
-    if (tid >= 1) {
-      sdata[tid] += sdata[tid - 1];
+    if (tid >= 1 && tid < groupElements) {
+      sdata[tid] = sdata[tid2] + sdata[tid2 - 1];
     }
     __syncthreads();
   }
+
+  __syncthreads();
 
   C_d[gid] = A_d[gid] + B_d[gid] + sdata[tid % groupElements];
 }
@@ -134,7 +137,7 @@ template <typename T> size_t testExternShared(size_t N, size_t groupElements) {
   HIPCHECK(hipMemcpy(B_d, B_h, Nbytes, hipMemcpyHostToDevice));
 
   // calculate the amount of dynamic shared memory required
-  size_t groupMemBytes = groupElements * sizeof(T);
+  size_t groupMemBytes = 2 * groupElements * sizeof(T);
   const int threadsPerBlock = 256;
 
   // launch kernel with dynamic shared memory
@@ -150,11 +153,14 @@ template <typename T> size_t testExternShared(size_t N, size_t groupElements) {
 
   // verify
   size_t errors = 0;
+
   for (size_t i = 0; i < N; ++i) {
     size_t tid = (i % groupElements);
     T sumFromSharedMemory = static_cast<T>(tid * (tid + 1) / 2);
     T expected = A_h[i] + B_h[i] + sumFromSharedMemory;
+
     if (C_h[i] != expected) {
+      if (i < 32) {
       std::cerr << std::fixed << std::setprecision(32);
       std::cerr << "At " << i << std::endl;
       std::cerr << "  Computed:" << C_h[i] << std::endl;
@@ -162,6 +168,7 @@ template <typename T> size_t testExternShared(size_t N, size_t groupElements) {
       std::cerr << sumFromSharedMemory << std::endl;
       std::cerr << A_h[i] << std::endl;
       std::cerr << B_h[i] << std::endl;
+      }
       ++errors;
     }
   }
@@ -177,6 +184,7 @@ template <typename T> size_t testExternShared(size_t N, size_t groupElements) {
 
 int main(int argc, char *argv[]) {
   size_t errors = 0;
+
   errors += testExternShared<float>(1024, 4);
   errors += testExternShared<float>(1024, 8);
   errors += testExternShared<float>(1024, 16);
