@@ -34,7 +34,7 @@ int main(int argc, char const *argv[]) {
         "-D__HIP_PLATFORM_HIPCL__=  " HIPCL_CXX_OPTIONS;
     const char *hip_platform = HIP_PLATFORM;
     const char *hip_runtime = HIP_PLATFORM;
-    const char *hip_version = HIPCL_VERSION_FULL;
+    const char *hip_version = HIPCL_VERSION_FULL_PRE;
 
     bool noopt_or_help = false;
     if (result.count("p") > 0) {

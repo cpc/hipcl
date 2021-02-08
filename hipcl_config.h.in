@@ -13,4 +13,6 @@
 
 #cmakedefine HIPCL_VERSION_FULL "@HIPCL_VERSION_FULL@"
 
+#cmakedefine HIPCL_VERSION_FULL_PRE "@HIPCL_VERSION_FULL_PRE@"
+
 #define HIP_PLATFORM "hipcl"
