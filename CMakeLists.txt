@@ -180,6 +180,8 @@ file(GENERATE
 
 install(FILES
   "${CMAKE_SOURCE_DIR}/cmake/FindHIP.cmake"
+  "${CMAKE_SOURCE_DIR}/cmake/run_hipcc.cmake"
+  "${CMAKE_SOURCE_DIR}/cmake/run_make2cmake.cmake"
   "${CMAKE_BINARY_DIR}/hipConfigVersion.cmake"
   "${CMAKE_BINARY_DIR}/hipConfig.cmake"
   DESTINATION "${HIPCL_CMAKE_DIR}")
