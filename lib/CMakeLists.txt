@@ -83,7 +83,7 @@ include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/hipcl-config.cmake.in"
-  "${CMAKE_BINARY_DIR}/hip-config.cmake"
+  "${CMAKE_BINARY_DIR}/hipConfig.cmake"
   INSTALL_DESTINATION "${HIPCL_CMAKE_DIR}"
   PATH_VARS HIPCL_INC_DIR HIPCL_LIB_DIR HIPCL_BIN_DIR HIPCL_COMPILER
   )

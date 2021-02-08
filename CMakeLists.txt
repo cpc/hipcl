@@ -68,7 +68,7 @@ set(HIPCL_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "where kernel libr
 set(HIPCL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "where kernel hipcl headers will be installed")
 set(HIPCL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "where hipcl_config will be installed")
 set(HIPCL_SAMPLE_BINDIR "${CMAKE_INSTALL_PREFIX}/bin/samples" CACHE PATH "where samples will be installed")
-set(HIPCL_CMAKE_DIR "${HIPCL_LIB_DIR}/hipcl/cmake" CACHE PATH "where cmake files will be installed")
+set(HIPCL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/cmake" CACHE PATH "where cmake files will be installed")
 
 if(UNIX AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0.0)
@@ -181,7 +181,7 @@ file(GENERATE
 install(FILES
   "${CMAKE_SOURCE_DIR}/cmake/FindHIP.cmake"
   "${CMAKE_BINARY_DIR}/hipConfigVersion.cmake"
-  "${CMAKE_BINARY_DIR}/hip-config.cmake"
+  "${CMAKE_BINARY_DIR}/hipConfig.cmake"
   DESTINATION "${HIPCL_CMAKE_DIR}")
 
 ##########################################
