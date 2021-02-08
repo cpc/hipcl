@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
     // TODO these should take into account also CUDA/HIP/HCC but currently don't
     const char *hip_path = CMAKE_INSTALL_PREFIX;
     const char *hip_compiler = "clang";
-    const char *hip_clang_path = CMAKE_INSTALL_PREFIX "/llvm";
+    const char *hip_clang_path = CLANG_ROOT_PATH;
     const char *hip_cpp_options =
         "-D__HIP_PLATFORM_HIPCL__=  " HIPCL_CXX_OPTIONS;
     const char *hip_platform = HIP_PLATFORM;
@@ -63,9 +63,9 @@ int main(int argc, char const *argv[]) {
       std::cout << "\n";
       std::cout << "== hipcl-clang \n";
       std::cout << "HIP_CLANG_PATH  : " << hip_clang_path << "\n";
-      std::system(CMAKE_INSTALL_PREFIX "/llvm/bin/clang --version");
+      std::system(CLANG_BIN_PATH "/clang --version");
       std::cout << "\n";
-      std::system(CMAKE_INSTALL_PREFIX "/llvm/bin/llc --version");
+      std::system(CLANG_BIN_PATH "/llc --version");
 
       std::cout << "\n";
       std::cout << "== Environment Variables \n";

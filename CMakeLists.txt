@@ -113,6 +113,10 @@ endif()
 
 message(STATUS "Using llvm-config: ${LLVM_CONFIG}")
 
+execute_process(COMMAND "${LLVM_CONFIG}" "--obj-root"
+  RESULT_VARIABLE RES
+  OUTPUT_VARIABLE CLANG_ROOT_PATH
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   set(DEFAULT_BUILD_TYPE "Debug")
