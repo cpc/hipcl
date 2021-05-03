@@ -390,6 +390,10 @@ const char *hipGetErrorName(hipError_t hip_error) {
     return "hipErrorNotFound";
   case hipErrorIllegalAddress:
     return "hipErrorIllegalAddress";
+  case hipErrorInvalidSymbol:
+    return "hipErrorInvalidSymbol";
+  case hipErrorNotSupported:
+    return "hipErrorNotSupported";
 
   case hipErrorMissingConfiguration:
     return "hipErrorMissingConfiguration";
@@ -1075,6 +1079,90 @@ hipError_t hipMemPtrGetInfo(void *ptr, size_t *size) {
 
 /********************************************************************/
 
+hipError_t hipModuleGetGlobal(hipDeviceptr_t *dptr, size_t *bytes,
+                              hipModule_t hmod, const char *name) {
+  ERROR_IF((!dptr || !bytes || !name || !hmod), hipErrorInvalidValue);
+  ERROR_IF((!hmod->symbolSupported()), hipErrorNotSupported);
+  ERROR_IF((!hmod->getSymbolAddressSize(name, dptr, bytes)),
+           hipErrorInvalidSymbol);
+
+  RETURN(hipSuccess);
+}
+
+hipError_t hipGetSymbolAddress(void **devPtr, const void *symbol) {
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  size_t bytes;
+  ERROR_IF(
+      (!cont->getSymbolAddressSize(symbol, (hipDeviceptr_t *)devPtr, &bytes)),
+      hipErrorInvalidSymbol);
+  RETURN(hipSuccess);
+}
+
+hipError_t hipGetSymbolSize(size_t *size, const void *symbol) {
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  hipDeviceptr_t devPtr;
+  ERROR_IF((!cont->getSymbolAddressSize(symbol, &devPtr, size)),
+           hipErrorInvalidSymbol);
+  RETURN(hipSuccess);
+}
+
+hipError_t hipMemcpyToSymbol(const void *symbol, const void *src,
+                             size_t sizeBytes, size_t offset,
+                             hipMemcpyKind kind) {
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+
+  hipError_t e = hipMemcpyToSymbolAsync(symbol, src, sizeBytes, offset, kind,
+                                        cont->getDefaultQueue());
+  if (e != hipSuccess)
+    RETURN(e);
+
+  cont->getDefaultQueue()->finish();
+  RETURN(hipSuccess);
+}
+
+hipError_t hipMemcpyToSymbolAsync(const void *symbol, const void *src,
+                                  size_t sizeBytes, size_t offset,
+                                  hipMemcpyKind kind, hipStream_t stream) {
+  void *symPtr = NULL;
+  size_t symSize = 0;
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  ERROR_IF((!cont->getSymbolAddressSize(symbol, &symPtr, &symSize)),
+           hipErrorInvalidSymbol);
+  RETURN(hipMemcpyAsync((void *)((intptr_t)symPtr + offset), src, sizeBytes,
+                        kind, stream));
+}
+
+hipError_t hipMemcpyFromSymbol(void *dst, const void *symbol, size_t sizeBytes,
+                               size_t offset, hipMemcpyKind kind) {
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+
+  hipError_t e = hipMemcpyFromSymbolAsync(dst, symbol, sizeBytes, offset, kind,
+                                          cont->getDefaultQueue());
+  if (e != hipSuccess)
+    RETURN(e);
+
+  cont->getDefaultQueue()->finish();
+  RETURN(hipSuccess);
+}
+
+hipError_t hipMemcpyFromSymbolAsync(void *dst, const void *symbol,
+                                    size_t sizeBytes, size_t offset,
+                                    hipMemcpyKind kind, hipStream_t stream) {
+  void *symPtr;
+  size_t symSize;
+  ClContext *cont = getTlsDefaultCtx();
+  ERROR_IF((cont == nullptr), hipErrorInvalidDevice);
+  ERROR_IF((!cont->getSymbolAddressSize(symbol, &symPtr, &symSize)),
+           hipErrorInvalidSymbol);
+  RETURN(hipMemcpyAsync(dst, (void *)((intptr_t)symPtr + offset), sizeBytes,
+                        kind, stream));
+}
+
 hipError_t hipMemcpyAsync(void *dst, const void *src, size_t sizeBytes,
                           hipMemcpyKind kind, hipStream_t stream) {
 
@@ -1484,13 +1572,6 @@ hipError_t hipFuncGetAttributes(hipFuncAttributes *attr, const void *func) {
   RETURN(hipErrorInvalidValue);
 }
 
-hipError_t hipModuleGetGlobal(hipDeviceptr_t *dptr, size_t *bytes,
-                              hipModule_t hmod, const char *name) {
-  // TODO global variable support will require some Clang changes
-  logError("Global variables are not supported ATM\n");
-  return hipErrorNotFound;
-}
-
 hipError_t hipModuleLoadData(hipModule_t *module, const void *image) {
   logError("hipModuleLoadData not implemented\n");
   return hipErrorNoBinaryForGpu;
@@ -1722,10 +1803,17 @@ extern "C" void __hipRegisterFunction(void **data, const void *hostFunction,
   }
 }
 
-extern "C" void __hipRegisterVar(std::vector<hipModule_t> *modules,
-                                 char *hostVar, char *deviceVar,
+extern "C" void __hipRegisterVar(void **data, char *hostVar, char *deviceVar,
                                  const char *deviceName, int ext, int size,
                                  int constant, int global) {
-  logError("__hipRegisterVar not implemented yet\n");
   InitializeOpenCL();
+  std::string *module = reinterpret_cast<std::string *>(data);
+  logDebug("RegisterVar on module {}\n", (void *)module);
+  for (size_t deviceId = 0; deviceId < NumDevices; ++deviceId) {
+    if (CLDeviceById(deviceId).registerVar(module, hostVar, deviceName)) {
+      logDebug("__hipRegisterVar: variable {} found\n", deviceName);
+    } else {
+      logError("__hipRegisterVar could not find: {}\n", deviceName);
+    }
+  }
 }

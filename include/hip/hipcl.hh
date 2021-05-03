@@ -383,6 +383,7 @@ typedef enum __HIP_NODISCARD hipError_t {
   hipErrorNotFound = 500,
   hipErrorIllegalAddress = 700,
   hipErrorInvalidSymbol = 701,
+  hipErrorNotSupported = 801,
   // Runtime Error Codes start here.
   hipErrorMissingConfiguration = 1001,
   hipErrorMemoryAllocation = 1002, ///< Memory allocation error.
@@ -1782,6 +1783,27 @@ hipError_t hipHostFree(void *ptr);
  */
 hipError_t hipMemcpy(void *dst, const void *src, size_t sizeBytes,
                      hipMemcpyKind kind);
+
+hipError_t hipModuleGetGlobal(hipDeviceptr_t *dptr, size_t *bytes,
+                              hipModule_t hmod, const char *name);
+
+hipError_t hipGetSymbolAddress(void **devPtr, const void *symbol);
+hipError_t hipGetSymbolSize(size_t *size, const void *symbol);
+hipError_t hipMemcpyToSymbol(const void *symbol, const void *src,
+                             size_t sizeBytes, size_t offset __dparm(0),
+                             hipMemcpyKind kind __dparm(hipMemcpyHostToDevice));
+hipError_t hipMemcpyToSymbolAsync(const void *symbol, const void *src,
+                                  size_t sizeBytes, size_t offset,
+                                  hipMemcpyKind kind,
+                                  hipStream_t stream __dparm(0));
+hipError_t
+hipMemcpyFromSymbol(void *dst, const void *symbol, size_t sizeBytes,
+                    size_t offset __dparm(0),
+                    hipMemcpyKind kind __dparm(hipMemcpyDeviceToHost));
+hipError_t hipMemcpyFromSymbolAsync(void *dst, const void *symbol,
+                                    size_t sizeBytes, size_t offset,
+                                    hipMemcpyKind kind,
+                                    hipStream_t stream __dparm(0));
 
 /**
  *  @brief Copy data from Host to Device
