@@ -111,7 +111,9 @@ bool ClKernel::setup(size_t Index, OpenCLFunctionInfoMap &FuncInfoMap) {
   logDebug("Kernel {} is: {} \n", Index, Name);
 
   auto it = FuncInfoMap.find(Name);
-  assert(it != FuncInfoMap.end());
+  // for global support
+  if (it == FuncInfoMap.end())
+    return true;
   FuncInfo = it->second;
 
   // TODO attributes
@@ -222,7 +224,7 @@ bool ClProgram::setup(std::string &binary) {
 
   std::string name = Device.getInfo<CL_DEVICE_NAME>();
 
-  int build_failed = Program.build("-x spir -cl-kernel-arg-info");
+  int build_failed = Program.compile("-x spir -cl-kernel-arg-info");
 
   std::string log = Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(Device, &err);
   if (err != CL_SUCCESS) {
@@ -232,6 +234,27 @@ bool ClProgram::setup(std::string &binary) {
   logDebug("Program BUILD LOG for device {}:\n{}\n", name, log);
   if (build_failed != CL_SUCCESS) {
     logError("clBuildProgram() Failed: {}\n", build_failed);
+    return false;
+  }
+
+  cl_program prg = Program();
+  prg = clLinkProgram(Context(), 0, NULL,
+                      symbolSupported() ? "-cl-take-global-address" : NULL, 1,
+                      &prg, NULL, NULL, &build_failed);
+
+  if (!prg) {
+    logError("clLinkProgram() Failed: {}\n", build_failed);
+    return false;
+  }
+  Program = prg;
+  log = Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(Device, &err);
+  if (err != CL_SUCCESS) {
+    logError("clGetProgramBuildInfo() Failed: {}\n", err);
+    return false;
+  }
+  logDebug("Program BUILD LOG for device {}:\n{}\n", name, log);
+  if (build_failed != CL_SUCCESS) {
+    logError("clLinkProgram() Failed: {}\n", build_failed);
     return false;
   }
 
@@ -282,6 +305,16 @@ hipFunction_t ClProgram::getKernel(const char *name) {
   return getKernel(SearchName);
 }
 
+bool ClProgram::getSymbolAddressSize(const void *name, hipDeviceptr_t *dptr,
+                                     size_t *bytes) {
+  cl_int err = clGetDeviceGlobalVariablePointerINTEL_ptr(
+      Device(), Program(), (const char *)name, bytes, dptr);
+  if (err != CL_SUCCESS)
+    return false;
+  else
+    return true;
+}
+
 /********************************/
 
 void *SVMemoryRegion::allocate(size_t size) {
@@ -311,7 +344,21 @@ bool SVMemoryRegion::free(void *p, size_t *size) {
 
 bool SVMemoryRegion::hasPointer(const void *p) {
   logDebug("hasPointer on: {}\n", p);
-  return (SvmAllocations.find((void *)p) != SvmAllocations.end());
+  if (SvmAllocations.find((void *)p) != SvmAllocations.end())
+    return true;
+  if (GlobalPointers.find((void *)p) != GlobalPointers.end())
+    return true;
+  return false;
+}
+
+void SVMemoryRegion::addGlobal(void *ptr, size_t size) {
+  GlobalPointers.emplace(ptr, size);
+}
+
+void SVMemoryRegion::removeGlobal(void *ptr) {
+  auto it = GlobalPointers.find(ptr);
+  if (it != GlobalPointers.end())
+    GlobalPointers.erase(it);
 }
 
 bool SVMemoryRegion::pointerSize(void *ptr, size_t *size) {
@@ -320,14 +367,27 @@ bool SVMemoryRegion::pointerSize(void *ptr, size_t *size) {
   if (I != SvmAllocations.end()) {
     *size = I->second;
     return true;
-  } else {
-    return false;
   }
+  auto J = GlobalPointers.find(ptr);
+  if (J != GlobalPointers.end()) {
+    *size = I->second;
+    return true;
+  }
+  return false;
 }
 
 bool SVMemoryRegion::pointerInfo(void *ptr, void **pbase, size_t *psize) {
   logDebug("pointerInfo on: {}\n", ptr);
   for (auto I : SvmAllocations) {
+    if ((I.first <= ptr) && (ptr < ((const char *)I.first + I.second))) {
+      if (pbase)
+        *pbase = I.first;
+      if (psize)
+        *psize = I.second;
+      return true;
+    }
+  }
+  for (auto I : GlobalPointers) {
     if ((I.first <= ptr) && (ptr < ((const char *)I.first + I.second))) {
       if (pbase)
         *pbase = I.first;
@@ -691,6 +751,11 @@ ClContext::ClContext(ClDevice *D, unsigned f) {
     Context = cl::Context(D->getDevice(), NULL, NULL, NULL, &err);
   }
   assert(err == CL_SUCCESS);
+  cl_platform_id pid = D->getDevice().getInfo<CL_DEVICE_PLATFORM>();
+  clGetDeviceGlobalVariablePointerINTEL_ptr =
+      (cl_int(*)(cl_device_id, cl_program, const char *, size_t *, void **))
+          clGetExtensionFunctionAddressForPlatform(
+              pid, "clGetDeviceGlobalVariablePointerINTEL");
 
   cl::CommandQueue CmdQueue(Context, Device->getDevice(),
                             CL_QUEUE_PROFILING_ENABLE, &err);
@@ -935,6 +1000,12 @@ hipError_t ClContext::createProgramBuiltin(std::string *module,
 
   logDebug("createProgramBuiltin: {}\n", FunctionName);
 
+  auto it = ProgramsCache.find(module);
+  if (it != ProgramsCache.end()) {
+    BuiltinPrograms[HostFunction] = it->second;
+    return hipSuccess;
+  }
+
   ClProgram *p = new ClProgram(Context, Device->getDevice());
   if (p == nullptr)
     return hipErrorOutOfMemory;
@@ -944,19 +1015,80 @@ hipError_t ClContext::createProgramBuiltin(std::string *module,
     delete p;
     return hipErrorInitializationError;
   }
-
+  ProgramsCache[module] = p;
   BuiltinPrograms[HostFunction] = p;
   return hipSuccess;
 }
 
-hipError_t ClContext::destroyProgramBuiltin(const void *HostFunction) {
+hipError_t ClContext::createProgramBuiltinVar(std::string *module,
+                                              const void *HostVar,
+                                              std::string &VarName) {
+  std::lock_guard<std::mutex> Lock(ContextMutex);
+  logDebug("createProgramBuiltinVar: {}\n", VarName);
+  if (!symbolSupported()) {
+    logError("createProgramBuiltinVar is not supported on this platform");
+    return hipErrorNotSupported;
+  }
+
+  ClProgram *p;
+  auto it = ProgramsCache.find(module);
+  if (it != ProgramsCache.end()) {
+    p = it->second;
+  } else {
+    p = new ClProgram(Context, Device->getDevice());
+    if (p == nullptr)
+      return hipErrorOutOfMemory;
+
+    if (!p->setup(*module)) {
+      logCritical("Failed to build program for '{}'", VarName);
+      delete p;
+      return hipErrorInitializationError;
+    }
+    ProgramsCache[module] = p;
+  }
+  hipDeviceptr_t dPtr;
+  size_t sz;
+  if (!it->second->getSymbolAddressSize(VarName.c_str(), &dPtr, &sz)) {
+    logError("Symbol '{}' was not found in program", VarName);
+  }
+  GlobalVarsMap[VarName] = std::make_tuple(p, dPtr, sz);
+  Memory.addGlobal(dPtr, sz);
+  BuiltinVars[HostVar] = p;
+  return hipSuccess;
+}
+
+hipError_t ClContext::destroyProgramBuiltin(std::string *module) {
   std::lock_guard<std::mutex> Lock(ContextMutex);
 
-  auto it = BuiltinPrograms.find(HostFunction);
-  if (it == BuiltinPrograms.end())
+  auto it = ProgramsCache.find(module);
+  if (it == ProgramsCache.end())
     return hipErrorUnknown;
-  delete it->second;
-  BuiltinPrograms.erase(it);
+  ClProgram *prog = it->second;
+  ProgramsCache.erase(it);
+
+  for (auto iter = BuiltinPrograms.begin(); iter != BuiltinPrograms.end();) {
+    if (iter->second == prog) {
+      iter = BuiltinPrograms.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  for (auto iter = BuiltinVars.begin(); iter != BuiltinVars.end();) {
+    if (iter->second == prog) {
+      iter = BuiltinVars.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  for (auto iter = GlobalVarsMap.begin(); iter != GlobalVarsMap.end();) {
+    if (std::get<0>(iter->second) == prog) {
+      Memory.removeGlobal(std::get<1>(iter->second));
+      iter = GlobalVarsMap.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  delete prog;
   return hipSuccess;
 }
 
@@ -1079,8 +1211,36 @@ hipError_t ClContext::destroyProgram(ClProgram *prog) {
   if (it == Programs.end())
     return hipErrorInvalidHandle;
 
+  for (auto iter = GlobalVarsMap.begin(); iter != GlobalVarsMap.end();) {
+    if (std::get<0>(iter->second) == prog) {
+      Memory.removeGlobal(std::get<1>(iter->second));
+      iter = GlobalVarsMap.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+
   Programs.erase(it);
   return hipSuccess;
+}
+
+bool ClContext::getSymbolAddressSize(const void *name, hipDeviceptr_t *dptr,
+                                     size_t *bytes) {
+  std::lock_guard<std::mutex> Lock(ContextMutex);
+  auto it = GlobalVarsMap.find((const char *)name);
+  if (it != GlobalVarsMap.end()) {
+    *dptr = std::get<1>(it->second);
+    *bytes = std::get<2>(it->second);
+    return true;
+  }
+  for (auto it = Programs.begin(); it != Programs.end(); ++it) {
+    if ((*it)->getSymbolAddressSize(name, dptr, bytes)) {
+      GlobalVarsMap[(const char *)name] = std::make_tuple(*it, *dptr, *bytes);
+      Memory.addGlobal(*dptr, *bytes);
+      return true;
+    }
+  }
+  return false;
 }
 
 /***********************************************************************/
@@ -1322,23 +1482,33 @@ void ClDevice::unregisterModule(std::string *module) {
     Modules.erase(it);
 
   const void *HostFunction = nullptr;
+  const void *HostVar = nullptr;
   std::map<const void *, std::string *>::iterator it2, e;
 
-  for (it2 = HostPtrToModuleMap.begin(), e = HostPtrToModuleMap.end(); it2 != e;
-       ++it2) {
-
+  it2 = HostPtrToModuleMap.begin();
+  while (it2 != HostPtrToModuleMap.end()) {
     if (it2->second == module) {
       HostFunction = it2->first;
-      HostPtrToModuleMap.erase(it2);
-      auto it3 = HostPtrToNameMap.find(HostFunction);
-      HostPtrToNameMap.erase(it3);
-      PrimaryContext->destroyProgramBuiltin(HostFunction);
-      for (ClContext *C : Contexts) {
-        C->destroyProgramBuiltin(HostFunction);
-      }
-      break;
+      HostPtrToNameMap.erase(HostFunction);
+      it2 = HostPtrToModuleMap.erase(it2);
+    } else {
+      ++it2;
     }
+  }
 
+  it2 = HostVarPtrToModuleMap.begin();
+  while (it2 != HostVarPtrToModuleMap.end()) {
+    if (it2->second == module) {
+      HostVar = it2->first;
+      HostVarPtrToNameMap.erase(HostVar);
+      it2 = HostVarPtrToModuleMap.erase(it2);
+    } else {
+      ++it2;
+    }
+  }
+  PrimaryContext->destroyProgramBuiltin(module);
+  for (ClContext *C : Contexts) {
+    C->destroyProgramBuiltin(module);
   }
 }
 
@@ -1360,6 +1530,23 @@ bool ClDevice::registerFunction(std::string *module, const void *HostFunction,
           hipSuccess);
 }
 
+bool ClDevice::registerVar(std::string *module, const void *HostVar,
+                           const char *VarName) {
+  std::lock_guard<std::mutex> Lock(DeviceMutex);
+  auto it = std::find(Modules.begin(), Modules.end(), module);
+  if (it == Modules.end()) {
+    logError("Module PTR not FOUND: {}\n", (void *)module);
+    return false;
+  }
+
+  HostVarPtrToModuleMap.emplace(std::make_pair(HostVar, module));
+  HostVarPtrToNameMap.emplace(std::make_pair(HostVar, VarName));
+
+  std::string temp(VarName);
+  return (PrimaryContext->createProgramBuiltinVar(module, HostVar, temp) ==
+          hipSuccess);
+}
+
 bool ClDevice::getModuleAndFName(const void *HostFunction,
                                  std::string &FunctionName,
                                  std::string **module) {
@@ -1376,6 +1563,21 @@ bool ClDevice::getModuleAndFName(const void *HostFunction,
   return true;
 }
 
+bool ClDevice::getModuleAndVarName(const void *HostVar, std::string &VarName,
+                                   std::string **module) {
+  std::lock_guard<std::mutex> Lock(DeviceMutex);
+
+  auto it1 = HostVarPtrToModuleMap.find(HostVar);
+  auto it2 = HostVarPtrToNameMap.find(HostVar);
+
+  if ((it1 == HostVarPtrToModuleMap.end()) ||
+      (it2 == HostVarPtrToNameMap.end()))
+    return false;
+
+  VarName.assign(it2->second);
+  *module = it1->second;
+  return true;
+}
 /***********************************************************************/
 
 ClDevice &CLDeviceById(int deviceId) { return *OpenCLDevices.at(deviceId); }

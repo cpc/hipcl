@@ -155,7 +155,6 @@ public:
   int setAllArgs(void **args, size_t shared);
   int setAllArgs(void *args, size_t size, size_t shared);
   size_t getTotalArgSize() const { return TotalArgSize; }
-
 };
 
 /********************************/
@@ -166,14 +165,29 @@ class ClProgram {
   cl::Device Device;
   std::vector<hipFunction_t> Kernels;
   OpenCLFunctionInfoMap FuncInfo;
+  cl_int (*clGetDeviceGlobalVariablePointerINTEL_ptr)(
+      cl_device_id device, cl_program program, const char *global_variable_name,
+      size_t *global_variable_size_ret, void **global_variable_pointer_ret);
 
 public:
-  ClProgram(cl::Context C, cl::Device D) : Program(), Context(C), Device(D) {}
+  ClProgram(cl::Context C, cl::Device D) : Program(), Context(C), Device(D) {
+    cl_platform_id pid;
+    D.getInfo(CL_DEVICE_PLATFORM, &pid);
+    clGetDeviceGlobalVariablePointerINTEL_ptr =
+        (cl_int(*)(cl_device_id, cl_program, const char *, size_t *, void **))
+            clGetExtensionFunctionAddressForPlatform(
+                pid, "clGetDeviceGlobalVariablePointerINTEL");
+  }
   ~ClProgram();
 
   bool setup(std::string &binary);
   hipFunction_t getKernel(const char *name);
   hipFunction_t getKernel(std::string &name);
+  inline bool symbolSupported() {
+    return clGetDeviceGlobalVariablePointerINTEL_ptr != NULL;
+  }
+  bool getSymbolAddressSize(const void *name, hipDeviceptr_t *dptr,
+                            size_t *bytes);
 };
 
 struct hipStreamCallbackData {
@@ -187,12 +201,14 @@ class SVMemoryRegion {
   // ContextMutex should be enough
 
   std::map<void *, size_t> SvmAllocations;
+  std::map<void *, size_t> GlobalPointers;
   cl::Context Context;
 
 public:
   void init(cl::Context &C) { Context = C; }
   SVMemoryRegion &operator=(SVMemoryRegion &&rhs) {
     SvmAllocations = std::move(rhs.SvmAllocations);
+    GlobalPointers = std::move(rhs.SvmAllocations);
     Context = std::move(rhs.Context);
     return *this;
   }
@@ -205,6 +221,8 @@ public:
   int memCopy(void *dst, const void *src, size_t size, cl::CommandQueue &queue);
   int memFill(void *dst, size_t size, void *pattern, size_t patt_size,
               cl::CommandQueue &queue);
+  void addGlobal(void *ptr, size_t size);
+  void removeGlobal(void *ptr);
   void clear();
 };
 
@@ -283,10 +301,18 @@ class ClContext {
   hipStream_t DefaultQueue;
   std::stack<ExecItem *> ExecStack;
 
+  std::map<std::string *, ClProgram *> ProgramsCache;
   std::map<const void *, ClProgram *> BuiltinPrograms;
+  std::map<const void *, ClProgram *> BuiltinVars;
   std::set<ClProgram *> Programs;
+  std::map<std::string, std::tuple<ClProgram *, hipDeviceptr_t, size_t>>
+      GlobalVarsMap;
 
   hipStream_t findQueue(hipStream_t stream);
+
+  cl_int (*clGetDeviceGlobalVariablePointerINTEL_ptr)(
+      cl_device_id device, cl_program program, const char *global_variable_name,
+      size_t *global_variable_size_ret, void **global_variable_pointer_ret);
 
 public:
   ClContext(ClDevice *D, unsigned f);
@@ -320,7 +346,9 @@ public:
   hipError_t launchHostFunc(const void *HostFunction);
   hipError_t createProgramBuiltin(std::string *module, const void *HostFunction,
                                   std::string &FunctionName);
-  hipError_t destroyProgramBuiltin(const void *HostFunction);
+  hipError_t createProgramBuiltinVar(std::string *module, const void *HostVar,
+                                     std::string &VarName);
+  hipError_t destroyProgramBuiltin(std::string *module);
 
   hipError_t launchWithKernelParams(dim3 grid, dim3 block, size_t shared,
                                     hipStream_t stream, void **kernelParams,
@@ -331,6 +359,11 @@ public:
 
   ClProgram *createProgram(std::string &binary);
   hipError_t destroyProgram(ClProgram *prog);
+  inline bool symbolSupported() {
+    return clGetDeviceGlobalVariablePointerINTEL_ptr != NULL;
+  }
+  bool getSymbolAddressSize(const void *name, hipDeviceptr_t *dptr,
+                            size_t *bytes);
 };
 
 class ClDevice {
@@ -345,6 +378,8 @@ class ClDevice {
   std::vector<std::string *> Modules;
   std::map<const void *, std::string *> HostPtrToModuleMap;
   std::map<const void *, std::string> HostPtrToNameMap;
+  std::map<const void *, std::string *> HostVarPtrToModuleMap;
+  std::map<const void *, std::string> HostVarPtrToNameMap;
   cl::Device Device;
   cl::Platform Platform;
   ClContext *PrimaryContext;
@@ -371,8 +406,12 @@ public:
   void unregisterModule(std::string *module);
   bool registerFunction(std::string *module, const void *HostFunction,
                         const char *FunctionName);
+  bool registerVar(std::string *module, const void *HostVar,
+                   const char *deviceName);
   bool getModuleAndFName(const void *HostFunction, std::string &FunctionName,
                          std::string **module);
+  bool getModuleAndVarName(const void *HostVar, std::string &VarName,
+                           std::string **module);
 
   const char *getName() const { return Properties.name; }
   int getAttr(int *pi, hipDeviceAttribute_t attr);
