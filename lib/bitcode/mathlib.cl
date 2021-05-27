@@ -95,6 +95,9 @@ EXPORT int CL_NAME2(NAME, h)(half x) { return NAME(x); }
 #define DEF_OPENCL1F_NATIVE(NAME) \
 EXPORT float CL_NAME2(NAME##_native, f)(float x) { return native_##NAME(x); }
 
+#define DEF_OPENCL2F_NATIVE(NAME) \
+EXPORT float CL_NAME2(NAME##_native, f)(float x, float y) { return native_##NAME(x, y); }
+
 // +7
 DEF_OPENCL1F(acos)
 DEF_OPENCL1F(asin)
@@ -312,6 +315,9 @@ DEF_OPENCL1F_NATIVE(exp)
 DEF_OPENCL1F_NATIVE(log10)
 DEF_OPENCL1F_NATIVE(log2)
 DEF_OPENCL1F_NATIVE(log)
+
+DEF_OPENCL2F_NATIVE(divide)
+DEF_OPENCL2F_NATIVE(powr)
 
 /* other */
 
