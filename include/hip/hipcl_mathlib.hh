@@ -683,6 +683,14 @@ EXPORT void __sincosf(float x, float *sptr, float *cptr) {
   *cptr = GEN_NAME2(cos_native, f)(x);
 }
 
+extern "C" {
+float NON_OVLD GEN_NAME2(divide_native, f)(float x, float y);
+}
+
+EXPORT float __fdividef(float x, float y) {
+  return GEN_NAME2(divide_native, f)(x, y);
+}
+
 /**********************************************************************/
 
 extern "C" {
@@ -696,6 +704,7 @@ EXPORT void __syncthreads() { GEN_NAME(local_barrier)(); }
 EXPORT float __powf(float x, float y);
 EXPORT float __saturatef(float x);
 EXPORT void __sincosf(float x, float *sptr, float *cptr);
+EXPORT float __fdividef(float x, float y);
 EXPORT void __syncthreads();
 #endif
 
