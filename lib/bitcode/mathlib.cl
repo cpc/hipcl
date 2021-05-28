@@ -245,6 +245,8 @@ EXPORT float CL_NAME2(remquo, d)(double x, double y, DEFAULT_AS int *quo) {
 // OCML
 DEFOCML_OPENCL2F(rhypot)
 
+DEF_OPENCL1F(rint)
+
 // OCML rlen3 / rlen4
 float OVLD rlen4(float4 f);
 double OVLD rlen4(double4 f);
