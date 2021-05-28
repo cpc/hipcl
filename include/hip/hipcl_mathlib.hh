@@ -1207,8 +1207,20 @@ __DEF_FUN1(double, trunc);
   float func(float x, int y) { return func##f(x, y); }
 __DEF_FLOAT_FUN2I(scalbn)
 
+EXPORT char min(char arg1, char arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT char max(char arg1, char arg2) { return (arg1 > arg2) ? arg1 : arg2; }
+EXPORT unsigned char min(unsigned char arg1, unsigned char arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT unsigned char max(unsigned char arg1, unsigned char arg2) { return (arg1 > arg2) ? arg1 : arg2; }
+
+EXPORT short min(short arg1, short arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT short max(short arg1, short arg2) { return (arg1 > arg2) ? arg1 : arg2; }
+EXPORT unsigned short min(unsigned short arg1, unsigned short arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT unsigned short max(unsigned short arg1, unsigned short arg2) { return (arg1 > arg2) ? arg1 : arg2; }
+
 EXPORT int min(int arg1, int arg2) { return (arg1 < arg2) ? arg1 : arg2; }
 EXPORT int max(int arg1, int arg2) { return (arg1 > arg2) ? arg1 : arg2; }
+EXPORT unsigned int min(unsigned int arg1, unsigned int arg2) { return (arg1 < arg2) ? arg1 : arg2; }
+EXPORT unsigned int max(unsigned int arg1, unsigned int arg2) { return (arg1 > arg2) ? arg1 : arg2; }
 
 EXPORT float max(float x, float y) { return fmaxf(x, y); }
 
