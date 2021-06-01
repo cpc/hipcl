@@ -95,6 +95,9 @@ EXPORT int CL_NAME2(NAME, h)(half x) { return NAME(x); }
 #define DEF_OPENCL1F_NATIVE(NAME) \
 EXPORT float CL_NAME2(NAME##_native, f)(float x) { return native_##NAME(x); }
 
+#define DEF_OPENCL2F_NATIVE(NAME) \
+EXPORT float CL_NAME2(NAME##_native, f)(float x, float y) { return native_##NAME(x, y); }
+
 // +7
 DEF_OPENCL1F(acos)
 DEF_OPENCL1F(asin)
@@ -242,6 +245,8 @@ EXPORT float CL_NAME2(remquo, d)(double x, double y, DEFAULT_AS int *quo) {
 // OCML
 DEFOCML_OPENCL2F(rhypot)
 
+DEF_OPENCL1F(rint)
+
 // OCML rlen3 / rlen4
 float OVLD rlen4(float4 f);
 double OVLD rlen4(double4 f);
@@ -312,6 +317,9 @@ DEF_OPENCL1F_NATIVE(exp)
 DEF_OPENCL1F_NATIVE(log10)
 DEF_OPENCL1F_NATIVE(log2)
 DEF_OPENCL1F_NATIVE(log)
+
+DEF_OPENCL2F_NATIVE(divide)
+DEF_OPENCL2F_NATIVE(powr)
 
 /* other */
 
