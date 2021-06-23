@@ -64,16 +64,16 @@ function(add_hipcl_binary_device_link EXEC_NAME)
 
     target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
 
-    target_compile_options("hipcl" INTERFACE "-fgpu-rdc")
+    target_compile_options("${EXEC_NAME}" PRIVATE "-fgpu-rdc")
 
-    target_link_options("hipcl" INTERFACE
+    target_link_options("${EXEC_NAME}" PRIVATE
         "-fgpu-rdc"
-        "--hip-link"
-        "$<INSTALL_INTERFACE:--hip-llvm-pass-path=${HIPCL_LLVM_DIR}>"
-        "$<BUILD_INTERFACE:--hip-llvm-pass-path=${CMAKE_BINARY_DIR}/llvm_passes>"
-        "$<INSTALL_INTERFACE:--hip-device-lib-path=${HIPCL_DATA_DIR}>"
-        "$<BUILD_INTERFACE:--hip-device-lib-path=${CMAKE_BINARY_DIR}>"
-        "--hip-device-lib=kernellib.bc")
+	"--hip-link"
+	"$<INSTALL_INTERFACE:--hip-llvm-pass-path=${HIPCL_LLVM_DIR}>"
+	"$<BUILD_INTERFACE:--hip-llvm-pass-path=${CMAKE_BINARY_DIR}/llvm_passes>"
+	"$<INSTALL_INTERFACE:--hip-device-lib-path=${HIPCL_DATA_DIR}>"
+	"$<BUILD_INTERFACE:--hip-device-lib-path=${CMAKE_BINARY_DIR}>"
+	"--hip-device-lib=kernellib.bc")
 
     install(TARGETS "${EXEC_NAME}"
             RUNTIME DESTINATION "${HIPCL_SAMPLE_BINDIR}")
