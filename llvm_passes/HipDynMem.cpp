@@ -165,7 +165,11 @@ private:
 
     SmallVector<ReturnInst *, 1> RI;
 
+#if LLVM_VERSION_MAJOR > 11
+    CloneFunctionInto(NewF, F, VV, CloneFunctionChangeType::GlobalChanges, RI);
+#else
     CloneFunctionInto(NewF, F, VV, true, RI);
+#endif
 
     // float* (without AS, for MDNode)
     PointerType *AS0_PTR = PointerType::get(ELT, 0);
