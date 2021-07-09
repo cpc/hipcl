@@ -64,9 +64,9 @@ function(add_hipcl_binary_device_link EXEC_NAME)
 
     target_link_libraries("${EXEC_NAME}" "${SANITIZER_LIBS}" "hipcl")
 
-    target_compile_options("hipcl" INTERFACE "-fgpu-rdc")
+    target_compile_options("${EXEC_NAME}" PRIVATE "-fgpu-rdc")
 
-    target_link_options("hipcl" INTERFACE
+    target_link_options("${EXEC_NAME}" PRIVATE
         "-fgpu-rdc"
         "--hip-link"
         "$<INSTALL_INTERFACE:--hip-llvm-pass-path=${HIPCL_LLVM_DIR}>"
