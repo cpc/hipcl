@@ -224,7 +224,9 @@ bool ClProgram::setup(std::string &binary) {
 
   std::string name = Device.getInfo<CL_DEVICE_NAME>();
 
-  int build_failed = Program.build(symbolSupported() ? "-x spir -cl-kernel-arg-info -cl-take-global-address" : "-x spir -cl-kernel-arg-info");
+  int build_failed = Program.build(symbolSupported() ?
+                  "-x spir -cl-kernel-arg-info -cl-take-global-address" :
+                  "-x spir -cl-kernel-arg-info");
 
   std::string log = Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(Device, &err);
   if (err != CL_SUCCESS) {
