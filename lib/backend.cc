@@ -224,7 +224,9 @@ bool ClProgram::setup(std::string &binary) {
 
   std::string name = Device.getInfo<CL_DEVICE_NAME>();
 
-  int build_failed = Program.compile("-x spir -cl-kernel-arg-info");
+  int build_failed = Program.build(symbolSupported() ?
+                  "-x spir -cl-kernel-arg-info -cl-take-global-address" :
+                  "-x spir -cl-kernel-arg-info");
 
   std::string log = Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(Device, &err);
   if (err != CL_SUCCESS) {
@@ -234,27 +236,6 @@ bool ClProgram::setup(std::string &binary) {
   logDebug("Program BUILD LOG for device {}:\n{}\n", name, log);
   if (build_failed != CL_SUCCESS) {
     logError("clBuildProgram() Failed: {}\n", build_failed);
-    return false;
-  }
-
-  cl_program prg = Program();
-  prg = clLinkProgram(Context(), 0, NULL,
-                      symbolSupported() ? "-cl-take-global-address" : NULL, 1,
-                      &prg, NULL, NULL, &build_failed);
-
-  if (!prg) {
-    logError("clLinkProgram() Failed: {}\n", build_failed);
-    return false;
-  }
-  Program = prg;
-  log = Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(Device, &err);
-  if (err != CL_SUCCESS) {
-    logError("clGetProgramBuildInfo() Failed: {}\n", err);
-    return false;
-  }
-  logDebug("Program BUILD LOG for device {}:\n{}\n", name, log);
-  if (build_failed != CL_SUCCESS) {
-    logError("clLinkProgram() Failed: {}\n", build_failed);
     return false;
   }
 
