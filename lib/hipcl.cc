@@ -1610,6 +1610,66 @@ hipError_t hipLaunchByPtr(const void *hostFunction) {
 
 /********************************************************************/
 
+#include "hip/hip_fatbin.h"
+
+#define SPIR_TRIPLE "hip-spir64-unknown-unknown"
+
+static hipError_t validateFatBinary(const void *data, std::string **module) {
+  const __CudaFatBinaryWrapper *fbwrapper =
+      reinterpret_cast<const __CudaFatBinaryWrapper *>(data);
+  if (fbwrapper->magic != __hipFatMAGIC2 || fbwrapper->version != 1) {
+    logCritical("The given object is not hipFatBinary !\n");
+    return hipErrorInvalidKernelFile;
+  }
+
+  const __ClangOffloadBundleHeader *header = fbwrapper->binary;
+  std::string magic(reinterpret_cast<const char *>(header),
+                    sizeof(CLANG_OFFLOAD_BUNDLER_MAGIC) - 1);
+  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC)) {
+    logCritical("The bundled binaries are not Clang bundled "
+                "(CLANG_OFFLOAD_BUNDLER_MAGIC is missing)\n");
+    return hipErrorInvalidKernelFile;
+  }
+
+  const __ClangOffloadBundleDesc *desc = &header->desc[0];
+  bool found = false;
+
+  for (uint64_t i = 0; i < header->numBundles;
+       ++i, desc = reinterpret_cast<const __ClangOffloadBundleDesc *>(
+                reinterpret_cast<uintptr_t>(&desc->triple[0]) +
+                desc->tripleSize)) {
+
+    std::string triple{&desc->triple[0], sizeof(SPIR_TRIPLE) - 1};
+    logDebug("Triple of bundle {} is: {}\n", i, triple);
+
+    if (triple.compare(SPIR_TRIPLE) == 0) {
+      found = true;
+      break;
+    } else {
+      logDebug("not a SPIR triple, ignoring\n");
+      continue;
+    }
+  }
+
+  if (!found) {
+    logDebug("Didn't find any suitable compiled binary!\n");
+    return hipErrorInvalidKernelFile;;
+  }
+
+  *module = new std::string;
+  if (!module) {
+    logCritical("Failed to allocate memory\n");
+    return hipErrorOutOfMemory;
+  }
+
+  const char *string_data = reinterpret_cast<const char *>(
+      reinterpret_cast<uintptr_t>(header) + (uintptr_t)desc->offset);
+  size_t string_size = desc->size;
+  (*module)->assign(string_data, string_size);
+
+  return hipSuccess;
+}
+
 hipError_t hipModuleLoad(hipModule_t *module, const char *fname) {
 
   ClContext *cont = getTlsDefaultCtx();
@@ -1623,10 +1683,35 @@ hipError_t hipModuleLoad(hipModule_t *module, const char *fname) {
   file.seekg(0, std::ios::beg);
   file.read(memblock, size);
   file.close();
-  std::string content(memblock, size);
+  std::string *content;
+
+  logDebug("Trying to load module {} as a HIP fat binary\n", fname);
+  __CudaFatBinaryWrapper wrapper = {
+    .magic = __hipFatMAGIC2,
+    .version = 1,
+    .binary = (__ClangOffloadBundleHeader *)memblock,
+    .unused = nullptr
+  };
+  hipError_t err = validateFatBinary(&wrapper, &content);
+  if (hipSuccess != err) {
+    if (hipErrorOutOfMemory == err) {
+      delete[] memblock;
+      RETURN(hipErrorOutOfMemory);
+    }
+    logDebug("Not a HIP fat binary, trying as direct SPIR-V\n");
+    content = new std::string;
+    if (!content) {
+      logCritical("Failed to allocate memory\n");
+      delete[] memblock;
+      RETURN(hipErrorOutOfMemory);
+    }
+    content->assign(memblock, size);
+  }
+
   delete[] memblock;
 
-  *module = cont->createProgram(content);
+  *module = cont->createProgram(*content);
+  delete content;
   if (*module == nullptr)
     RETURN(hipErrorInvalidValue);
   else
@@ -1688,66 +1773,15 @@ hipError_t hipModuleLaunchKernel(hipFunction_t k, unsigned int gridDimX,
 
 /*******************************************************************************/
 
-#include "hip/hip_fatbin.h"
-
-#define SPIR_TRIPLE "hip-spir64-unknown-unknown"
-
 static unsigned binaries_loaded = 0;
 
 extern "C" void **__hipRegisterFatBinary(const void *data) {
   InitializeOpenCL();
 
-  const __CudaFatBinaryWrapper *fbwrapper =
-      reinterpret_cast<const __CudaFatBinaryWrapper *>(data);
-  if (fbwrapper->magic != __hipFatMAGIC2 || fbwrapper->version != 1) {
-    logCritical("The given object is not hipFatBinary !\n");
+  std::string *module;
+
+  if (hipSuccess != validateFatBinary(data, &module))
     std::abort();
-  }
-
-  const __ClangOffloadBundleHeader *header = fbwrapper->binary;
-  std::string magic(reinterpret_cast<const char *>(header),
-                    sizeof(CLANG_OFFLOAD_BUNDLER_MAGIC) - 1);
-  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC)) {
-    logCritical("The bundled binaries are not Clang bundled "
-                "(CLANG_OFFLOAD_BUNDLER_MAGIC is missing)\n");
-    std::abort();
-  }
-
-  std::string *module = new std::string;
-  if (!module) {
-    logCritical("Failed to allocate memory\n");
-    std::abort();
-  }
-
-  const __ClangOffloadBundleDesc *desc = &header->desc[0];
-  bool found = false;
-
-  for (uint64_t i = 0; i < header->numBundles;
-       ++i, desc = reinterpret_cast<const __ClangOffloadBundleDesc *>(
-                reinterpret_cast<uintptr_t>(&desc->triple[0]) +
-                desc->tripleSize)) {
-
-    std::string triple{&desc->triple[0], sizeof(SPIR_TRIPLE) - 1};
-    logDebug("Triple of bundle {} is: {}\n", i, triple);
-
-    if (triple.compare(SPIR_TRIPLE) == 0) {
-      found = true;
-      break;
-    } else {
-      logDebug("not a SPIR triple, ignoring\n");
-      continue;
-    }
-  }
-
-  if (!found) {
-    logDebug("Didn't find any suitable compiled binary!\n");
-    std::abort();
-  }
-
-  const char *string_data = reinterpret_cast<const char *>(
-      reinterpret_cast<uintptr_t>(header) + (uintptr_t)desc->offset);
-  size_t string_size = desc->size;
-  module->assign(string_data, string_size);
 
   logDebug("Register module: {} \n", (void *)module);
 
