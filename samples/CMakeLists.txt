@@ -54,6 +54,33 @@ function(add_hipcl_binary EXEC_NAME)
 endfunction()
 
 # ARGN = sources
+function(add_hipcl_device_binary BIN_NAME)
+    set(SOURCES ${ARGN})
+
+    set(BIN_NAME_OBJ "${BIN_NAME}_o")
+
+    add_library("${BIN_NAME_OBJ}" OBJECT ${SOURCES})
+
+    set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
+
+    target_link_libraries("${BIN_NAME_OBJ}" "${SANITIZER_LIBS}" "hipcl")
+
+    target_compile_options("${BIN_NAME_OBJ}" PRIVATE "--cuda-device-only")
+
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${BIN_NAME}"
+                       COMMAND ${CMAKE_COMMAND} -E copy
+                               $<TARGET_OBJECTS:${BIN_NAME_OBJ}>
+                               "${CMAKE_CURRENT_BINARY_DIR}/${BIN_NAME}"
+                       DEPENDS "${BIN_NAME_OBJ}")
+
+    add_custom_target("${BIN_NAME}" DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${BIN_NAME}")
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${BIN_NAME}"
+            DESTINATION "${HIPCL_SAMPLE_BINDIR}")
+
+endfunction()
+
+# ARGN = sources
 function(add_hipcl_binary_device_link EXEC_NAME)
     set(SOURCES ${ARGN})
     set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
@@ -101,6 +128,7 @@ set(SAMPLES
     10_memcpy3D
     hipSymbol
     hipDeviceLink
+    hiploadmodule
 )
 
 foreach (SAMPLE ${SAMPLES})

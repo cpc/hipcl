@@ -1119,7 +1119,7 @@ hipError_t ClContext::launchWithKernelParams(dim3 grid, dim3 block,
     return hipErrorLaunchFailure;
   }
 
-  return stream->launch3(kernel, grid, block);
+  return Queue->launch3(kernel, grid, block);
 }
 
 hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
@@ -1141,7 +1141,7 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
       p += 2;
       continue;
     } else if (*p == HIP_LAUNCH_PARAM_BUFFER_SIZE) {
-      size = (size_t)p[1];
+      size = *(size_t *)p[1];
       p += 2;
       continue;
     } else {
@@ -1166,7 +1166,7 @@ hipError_t ClContext::launchWithExtraParams(dim3 grid, dim3 block,
     logError("Failed to set kernel arguments for launch! \n");
     return hipErrorLaunchFailure;
   }
-  return stream->launch3(kernel, grid, block);
+  return Queue->launch3(kernel, grid, block);
 }
 
 ClProgram *ClContext::createProgram(std::string &binary) {
