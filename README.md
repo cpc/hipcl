@@ -1,3 +1,6 @@
+# NOTE: As of December 2021 the code of HIPCL was integrated to a new [CHIP-SPV](https://github.com/CHIP-SPV/chip-spv) project and will be continued there. This README and the HIPCL repo is left here for a legacy reference. #
+
+
 # HIPCL library #
 --------------------
 
@@ -6,7 +9,11 @@
 
 ### What is HIPCL ###
 
-HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL and SPIR-V, thus providing a portability path from CUDA to OpenCL. HIPCL development is led by [Customized Parallel Computing](http://tuni.fi/cpc) group of [Tampere University](http://tuni.fi/en), Finland.
+HIPCL is a library that allows applications using the HIP API to be run on devices which support OpenCL and SPIR-V, thus providing a portability path from CUDA to OpenCL. HIPCL was created by [Customized Parallel Computing](http://tuni.fi/cpc) group of [Tampere University](http://tuni.fi/en), Finland.
+
+
+
+
 
 ## Building HIPCL ##
 --------------------
